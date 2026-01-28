@@ -1,16 +1,26 @@
 Package: spatialSportsR
-Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Authors@R: c(
-    person(
-      "Jane", "Doe",
-      email = "jane@example.com",
-      role = c("aut", "cre")
-    )
-  )
-Description: More about what it does (maybe more than one line).
-    Continuation lines should be indented.
-License: What license is it under?
+Title: Multi-Sport Spatial Data Engine
+Version: 0.0.0.9000
+Authors@R: person("Kaleb", "", email = "kaleb.a.coleman@gmail.com", role = c("aut", "cre"))
+Description: Reproducible multi-sport data pipeline with standardized spatial event tables.
+License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    dplyr,
+    jsonlite,
+    stats,
+    utils
+Suggests:
+    testthat (>= 3.0.0),
+    ggplot2,
+    DBI,
+    RSQLite,
+    curl,
+    httr2,
+    httr,
+    glue,
+    patchwork,
+    gridExtra
+Config/testthat/edition: 3
