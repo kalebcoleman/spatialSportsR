@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# data outputs
+/data/raw/
+/data/parsed/
