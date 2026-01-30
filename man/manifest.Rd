@@ -4,14 +4,24 @@
 \alias{manifest}
 \title{Report what raw data is present for a league + season}
 \usage{
-manifest(league, season, raw_dir = "data/raw")
+manifest(
+  league,
+  season,
+  source = NULL,
+  raw_dir = "data/raw",
+  season_type = NULL
+)
 }
 \arguments{
 \item{league}{League identifier (nba/nhl/nfl/mlb).}
 
 \item{season}{Season identifier.}
 
+\item{source}{Source identifier (nba only: espn, nba_stats, or all).}
+
 \item{raw_dir}{Directory for raw data.}
+
+\item{season_type}{Optional season type (e.g., "regular", "playoffs").}
 }
 \value{
 A list with present game ids, index_path, and league_dir.

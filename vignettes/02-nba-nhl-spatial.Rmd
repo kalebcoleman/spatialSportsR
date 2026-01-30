@@ -1,0 +1,59 @@
+---
+title: "NBA Spatial Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{NBA Spatial Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# NBA spatial data
+
+Spatial events are currently supported for NBA via ESPN summaries and NBA Stats
+shot chart / play-by-play data.
+
+## ESPN events (x_unit / y_unit in [0,1])
+
+```{r, eval=FALSE}
+library(spatialSportsR)
+
+tables <- parse_raw(
+  league = "nba",
+  season = 2026,
+  source = "espn",
+  season_type = "regular",
+  raw_dir = "data/raw"
+)
+
+events <- tables$events
+head(events)
+```
+
+## NBA Stats shots
+
+```{r, eval=FALSE}
+tables <- parse_raw(
+  league = "nba",
+  season = 2026,
+  source = "nba_stats",
+  season_type = "Regular Season",
+  raw_dir = "data/raw"
+)
+
+shots <- tables$shots
+head(shots)
+```
+
+## Notes
+
+- `events$x_unit` / `events$y_unit` are normalized to `[0,1]`.
+- NBA Stats `shots` includes `event_num` or `shot_id` for uniqueness.
+
+## NHL (planned)
+
+NHL spatial parsing is planned but not implemented yet. This vignette will be
+expanded once the NHL source adapter is complete.

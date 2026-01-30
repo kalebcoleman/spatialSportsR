@@ -7,9 +7,11 @@
 parse_raw(
   league,
   season,
+  source = NULL,
   raw_dir = "data/raw",
   progress = TRUE,
   quiet = FALSE,
+  season_type = NULL,
   ...
 )
 }
@@ -18,11 +20,15 @@ parse_raw(
 
 \item{season}{Season identifier.}
 
+\item{source}{Source identifier (nba only: espn, nba_stats, or all).}
+
 \item{raw_dir}{Directory for raw data.}
 
 \item{progress}{Show a progress bar while parsing.}
 
 \item{quiet}{Suppress progress messages.}
+
+\item{season_type}{Optional season type (e.g., "regular", "playoffs").}
 
 \item{...}{Extra arguments passed to the league source.}
 }

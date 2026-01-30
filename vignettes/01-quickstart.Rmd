@@ -1,0 +1,102 @@
+---
+title: "Quickstart"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Quickstart}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# spatialSportsR quickstart
+
+This package builds reproducible, per-season datasets. The main pipeline is:
+
+```
+collect_raw() → parse_raw() → validate_tables() → write_tables()
+```
+
+Most users will use the batch helper:
+
+```{r, eval=FALSE}
+library(spatialSportsR)
+
+collect_parse_write(
+  league = "nba",
+  seasons = 2026,
+  source = "espn",
+  season_type = "regular",
+  format = "rds",
+  bundle = TRUE,
+  skip_existing = TRUE,
+  keep_tables = FALSE,
+  validate = TRUE
+)
+```
+
+## Outputs
+
+Parsed outputs are stored under `data/parsed/` by season and source:
+
+- `data/parsed/nba/espn/<season>/`
+- `data/parsed/nba/nba_stats/<season>/`
+
+Playoffs are written to a `playoffs/` subfolder when `season_type = "playoffs"` (or `postseason` for ESPN).
+
+When `bundle = TRUE`, a bundled RDS is also written in the season folder:
+
+- ESPN: `espn_all.rds`
+- NBA Stats: `nba_stats_all.rds`
+
+## Common backfill (NBA Stats first)
+
+```{r, eval=FALSE}
+seasons <- 2020:2025
+
+collect_parse_write(
+  league = "nba",
+  seasons = seasons,
+  source = "nba_stats",
+  season_type = "Regular Season",
+  format = "rds",
+  bundle = TRUE,
+  skip_existing = TRUE,
+  keep_tables = FALSE,
+  validate = TRUE,
+  workers = 2,
+  rate_sleep = c(0.4, 1.0),
+  max_retries = 2L
+)
+
+collect_parse_write(
+  league = "nba",
+  seasons = seasons,
+  source = "espn",
+  season_type = "regular",
+  format = "rds",
+  bundle = TRUE,
+  skip_existing = TRUE,
+  keep_tables = FALSE,
+  validate = TRUE
+)
+```
+
+## Error logging
+
+You can write per-season errors to a CSV:
+
+```{r, eval=FALSE}
+collect_parse_write(
+  league = "nba",
+  seasons = 2020:2025,
+  source = "nba_stats",
+  format = "rds",
+  bundle = TRUE,
+  skip_existing = TRUE,
+  validate = TRUE,
+  log_path = "logs/collect_parse_errors.csv"
+)
+```

@@ -5,7 +5,14 @@
 \title{Cache helpers
 Build a cache path for raw data}
 \usage{
-cache_path(raw_dir, league, season, filename)
+cache_path(
+  raw_dir,
+  league,
+  season,
+  filename,
+  source = NULL,
+  season_type = NULL
+)
 }
 \arguments{
 \item{raw_dir}{Root raw directory.}
@@ -15,6 +22,8 @@ cache_path(raw_dir, league, season, filename)
 \item{season}{Season identifier.}
 
 \item{filename}{File name.}
+
+\item{source}{Optional source (nba only).}
 }
 \value{
 A cache file path.

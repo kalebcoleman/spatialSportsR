@@ -2,16 +2,18 @@
 % Please edit documentation in R/utils-schemas.R
 \name{schemas}
 \alias{schemas}
-\title{Get schema paths for a league}
+\title{Get schema paths for a league/source}
 \usage{
-schemas(league)
+schemas(league, source = NULL)
 }
 \arguments{
 \item{league}{League identifier (nba/nhl/nfl/mlb).}
+
+\item{source}{Source identifier (nba only: espn, nba_stats).}
 }
 \value{
-Named list of schema paths.
+Named list of schema paths (or schema descriptors).
 }
 \description{
-Get schema paths for a league
+Get schema paths for a league/source
 }

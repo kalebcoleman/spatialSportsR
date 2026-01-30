@@ -1,6 +1,7 @@
 make_tables <- function() {
   games <- data.frame(
     league = "nba",
+    source = "espn",
     season = "2024",
     game_id = "001",
     game_date = as.Date("2024-10-01"),
@@ -11,6 +12,7 @@ make_tables <- function() {
 
   events <- data.frame(
     league = "nba",
+    source = "espn",
     season = "2024",
     game_id = "001",
     event_id = "e1",

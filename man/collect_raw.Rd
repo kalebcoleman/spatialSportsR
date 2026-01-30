@@ -7,10 +7,16 @@
 collect_raw(
   league,
   season,
+  source = NULL,
   raw_dir = "data/raw",
   force = FALSE,
   progress = TRUE,
   quiet = FALSE,
+  shotchart_proxy = NULL,
+  workers = 1L,
+  rate_sleep = c(0.5, 1.2),
+  max_retries = 2L,
+  season_type = NULL,
   ...
 )
 }
@@ -19,6 +25,8 @@ collect_raw(
 
 \item{season}{Season identifier.}
 
+\item{source}{Source identifier (nba only: espn, nba_stats, or all).}
+
 \item{raw_dir}{Directory for raw data.}
 
 \item{force}{Force re-download even if cached.}
@@ -26,6 +34,16 @@ collect_raw(
 \item{progress}{Show a progress bar while collecting.}
 
 \item{quiet}{Suppress progress messages.}
+
+\item{shotchart_proxy}{Optional proxy string or list for NBA Stats requests.}
+
+\item{workers}{Number of parallel workers for per-game collection (NBA Stats only).}
+
+\item{rate_sleep}{Random sleep range (seconds) between endpoint calls.}
+
+\item{max_retries}{Max retries for 403/429/timeouts (NBA Stats only).}
+
+\item{season_type}{Optional season type (e.g., "regular", "playoffs").}
 
 \item{...}{Extra arguments passed to the league source.}
 }

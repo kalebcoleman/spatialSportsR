@@ -5,13 +5,15 @@
 \title{Source registry and schema access helpers
 Get a league source implementation}
 \usage{
-get_source(league)
+get_source(league, source = NULL)
 }
 \arguments{
 \item{league}{League identifier (nba/nhl/nfl/mlb).}
+
+\item{source}{Source identifier (nba only: espn, nba_stats, or all).}
 }
 \value{
-Source list for the requested league.
+Source list for the requested league/source.
 }
 \description{
 Source registry and schema access helpers

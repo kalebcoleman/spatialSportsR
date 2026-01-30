@@ -10,6 +10,7 @@ RoxygenNote: 7.3.3
 Imports:
     dplyr,
     jsonlite,
+    rvest,
     stats,
     utils
 Suggests:
@@ -22,5 +23,7 @@ Suggests:
     httr,
     glue,
     patchwork,
-    gridExtra
+    gridExtra,
+    future,
+    future.apply
 Config/testthat/edition: 3

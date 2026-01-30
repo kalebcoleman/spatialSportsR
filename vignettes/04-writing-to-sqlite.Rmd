@@ -1,0 +1,43 @@
+---
+title: "Writing to SQLite"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Writing to SQLite}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# SQLite export
+
+You can write parsed RDS outputs into a single SQLite database with
+`write_sqlite_from_rds()`. This uses the RDS bundles or per-table RDS files on
+disk (no re-parsing required).
+
+## Example
+
+```{r, eval=FALSE}
+library(spatialSportsR)
+
+write_sqlite_from_rds(
+  root_dir = "data/parsed",
+  league = "nba",
+  sources = c("espn", "nba_stats"),
+  seasons = c("2026", "2025-26"),
+  season_type = "regular",
+  db_path = "data/parsed/nba.sqlite",
+  mode = "append",
+  bundle = TRUE,
+  table_prefix = "source",
+  debug = TRUE
+)
+```
+
+## Notes
+
+- If `table_prefix = "source"`, tables are named `espn_games`,
+  `nba_stats_games`, etc.
+- Date/time columns are written as ISO strings in SQLite for readability.

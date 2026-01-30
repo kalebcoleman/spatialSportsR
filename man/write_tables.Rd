@@ -7,10 +7,13 @@
 write_tables(
   tables,
   format = c("rds", "csv", "sqlite"),
-  out_dir = "data/processed",
+  out_dir = "data/parsed",
   db_path = NULL,
   mode = c("append", "upsert"),
-  skip_existing = FALSE
+  skip_existing = TRUE,
+  bundle = FALSE,
+  bundle_name = NULL,
+  table_prefix = NULL
 )
 }
 \arguments{
@@ -25,6 +28,14 @@ write_tables(
 \item{mode}{Write mode for sqlite.}
 
 \item{skip_existing}{Skip writing rds/csv files if they already exist.}
+
+\item{bundle}{Write bundled RDS after per-table writes.}
+
+\item{bundle_name}{Bundle file name without extension.}
+
+\item{table_prefix}{Optional prefix for sqlite table names. Use "source" to prefix with source name.}
+
+\item{season_type}{Optional season type (e.g., "regular", "playoffs").}
 }
 \value{
 Invisibly TRUE on success.

@@ -2,11 +2,11 @@
 % Please edit documentation in R/source-nba.R
 \name{source_nba}
 \alias{source_nba}
-\title{NBA source helpers (internal)}
+\title{NBA source registry}
 \usage{
-source_nba()
+source_nba(source = c("espn", "nba_stats"))
 }
 \description{
-Internal ESPN NBA source implementation returned by \code{get_source("nba")}.
+Returns NBA source implementations for ESPN and NBA Stats.
 }
 \keyword{internal}
