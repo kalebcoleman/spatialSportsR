@@ -185,6 +185,7 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
       }
 
       tables <- NULL
+      table_paths <- NULL
       if (isTRUE(bundle)) {
         bundle_guess <- bundle_name
         if (is.null(bundle_guess) || !nzchar(bundle_guess)) {
@@ -197,6 +198,45 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
         bundle_path <- file.path(data_dir, paste0(bundle_guess, ".rds"))
         if (file.exists(bundle_path)) {
           tables <- readRDS(bundle_path)
+          if (!is.list(tables) || length(tables) == 0) {
+            tables <- NULL
+          } else {
+            non_df <- names(tables)[!vapply(tables, is.data.frame, logical(1))]
+            if (length(non_df) > 0) {
+              message(
+                "write_sqlite_from_rds: bundle has non-data.frame tables; falling back to per-table RDS. bundle=",
+                bundle_path,
+                " non_df=",
+                paste(non_df, collapse = ",")
+              )
+              tables <- NULL
+            } else {
+              table_paths <- setNames(rep(bundle_path, length(tables)), names(tables))
+              # If bundle has empty tables but per-table RDS has data, override the empty table.
+              empty_tbls <- names(tables)[vapply(tables, function(x) is.data.frame(x) && nrow(x) == 0, logical(1))]
+              if (length(empty_tbls) > 0) {
+                for (nm in empty_tbls) {
+                  rds_path <- file.path(data_dir, paste0(nm, ".rds"))
+                  if (!file.exists(rds_path)) next
+                  rds_tbl <- readRDS(rds_path)
+                  if (is.data.frame(rds_tbl) && nrow(rds_tbl) > 0) {
+                    tables[[nm]] <- rds_tbl
+                    table_paths[[nm]] <- rds_path
+                    message(
+                      "write_sqlite_from_rds: overriding empty bundled table=",
+                      nm,
+                      " bundle=",
+                      bundle_path,
+                      " path=",
+                      rds_path,
+                      " rows=",
+                      nrow(rds_tbl)
+                    )
+                  }
+                }
+              }
+            }
+          }
         }
       }
 
@@ -206,13 +246,18 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
         rds_paths <- rds_paths[!grepl("_all\\.rds$", rds_paths)]
         tables <- lapply(rds_paths, readRDS)
         names(tables) <- sub("\\.rds$", "", basename(rds_paths))
+        table_paths <- setNames(rds_paths, names(tables))
       }
 
       if (!is.list(tables) || length(tables) == 0) next
 
       for (nm in names(tables)) {
         tbl <- tables[[nm]]
-        if (is.null(tbl) || !is.data.frame(tbl)) next
+        if (is.null(tbl) || !is.data.frame(tbl)) {
+          src_path <- if (!is.null(table_paths) && nm %in% names(table_paths)) table_paths[[nm]] else NA_character_
+          message("write_sqlite_from_rds: skipped non-data.frame table=", nm, " path=", src_path, " rows=0")
+          next
+        }
         if (any(duplicated(tolower(names(tbl))))) {
           keep_idx <- !duplicated(tolower(names(tbl)))
           if (isTRUE(debug)) {
@@ -263,7 +308,8 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
 
         DBI::dbWriteTable(con, table_name, tbl, append = (mode == "append"), overwrite = (mode != "append"))
         if (isTRUE(debug)) {
-          message("write_sqlite_from_rds: wrote table=", table_name, " rows=", nrow(tbl))
+          src_path <- if (!is.null(table_paths) && nm %in% names(table_paths)) table_paths[[nm]] else NA_character_
+          message("write_sqlite_from_rds: wrote table=", table_name, " rows=", nrow(tbl), " path=", src_path)
         }
       }
 

@@ -649,6 +649,30 @@ source_nba_espn <- function() {
   ))
 }
 
+.espn_nba_empty_games <- function() {
+  .espn_nba_as_df(data.frame(
+    league = character(),
+    season = integer(),
+    season_type = integer(),
+    game_id = character(),
+    game_date = character(),
+    home_team_id = character(),
+    away_team_id = character(),
+    home_team = character(),
+    away_team = character(),
+    home_score = character(),
+    away_score = character(),
+    status = character(),
+    neutralSite = logical(),
+    attendance = integer(),
+    home_record_total = character(),
+    home_record_at_home = character(),
+    away_record_total = character(),
+    away_record_on_road = character(),
+    stringsAsFactors = FALSE
+  ))
+}
+
 .espn_nba_empty_teams <- function() {
   .espn_nba_as_df(data.frame(
     league = character(),

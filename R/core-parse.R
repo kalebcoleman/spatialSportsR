@@ -75,7 +75,7 @@ parse_raw <- function(league,
   }
 
   for (i in seq_len(total)) {
-    parsed[[i]] <- src$parse_game_raw(raw_paths[[i]], ...)
+    parsed[[i]] <- src$parse_game_raw(raw_paths[[i]], season_type = season_type, ...)
 
     if (isTRUE(progress)) {
       utils::setTxtProgressBar(pb, i)

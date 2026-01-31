@@ -1446,6 +1446,18 @@ parse_nba_shotchart <- function(raw_json_or_path, season, season_type = "Regular
 }
 
 .nba_shotchart_coerce_types <- function(df) {
+  list_cols <- names(df)[vapply(df, is.list, logical(1))]
+  if (length(list_cols) > 0) {
+    for (col in list_cols) {
+      df[[col]] <- vapply(df[[col]], function(v) {
+        if (is.null(v) || length(v) == 0) return(NA_character_)
+        if (is.list(v)) v <- v[[1]]
+        if (is.null(v) || length(v) == 0) return(NA_character_)
+        as.character(v)[1]
+      }, character(1))
+    }
+  }
+
   char_cols <- c("GAME_ID", "PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_NAME", "SHOT_TYPE",
                  "SHOT_ZONE_BASIC", "SHOT_ZONE_AREA", "SHOT_ZONE_RANGE", "GAME_DATE", "HTM", "VTM",
                  "EVENT_TYPE", "ACTION_TYPE", "GRID_TYPE")
