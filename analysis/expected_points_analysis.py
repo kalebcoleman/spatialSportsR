@@ -117,33 +117,6 @@ if __name__ == "__main__":
     print(f"Plot saved to {SHOT_CHART_OUTPUT_FILE}")
     plt.close(fig) # Close figure to free up memory
 
-    # --- Shot Efficiency Heatmap ---
-    print("Generating shot efficiency heatmap...")
-    fig, ax = plt.subplots(figsize=(12, 11))
-    x_bins = 50
-    y_bins = 50
-    x_range = (-250, 250)
-    y_range = (-47.5, 422.5)
-    total_shots_hist, yedges, xedges = np.histogram2d(shots_df['LOC_Y'], shots_df['LOC_X'], bins=(y_bins, x_bins), range=[y_range, x_range])
-    made_shots_hist, _, _ = np.histogram2d(made_shots['LOC_Y'], made_shots['LOC_X'], bins=(y_bins, x_bins), range=[y_range, x_range])
-    shot_efficiency = np.divide(made_shots_hist, total_shots_hist, out=np.zeros_like(made_shots_hist), where=total_shots_hist != 0)
-    shot_efficiency = np.ma.masked_where(total_shots_hist == 0, shot_efficiency)
-    if shot_efficiency.count() > 0:
-        vmin, vmax = np.percentile(shot_efficiency.compressed(), [5, 95])
-    else:
-        vmin, vmax = 0.2, 0.7
-    im = ax.imshow(shot_efficiency, extent=[x_range[1], x_range[0], y_range[1], y_range[0]], cmap='viridis', interpolation='bilinear', vmin=vmin, vmax=vmax)
-    draw_nba_court(ax, color="white", lw=2, outer_lines=True)
-    cbar = fig.colorbar(im, ax=ax, shrink=0.7)
-    cbar.set_label('Field Goal %', fontsize=12)
-    ax.set_xlim(-250, 250)
-    ax.set_ylim(-47.5, 422.5)
-    ax.tick_params(labelbottom=False, labelleft=False)
-    ax.set_title(f'NBA Shot Efficiency: {SEASON} Season', fontsize=18)
-    plt.savefig(HEATMAP_OUTPUT_FILE, dpi=300, bbox_inches='tight')
-    print(f"Heatmap saved to {HEATMAP_OUTPUT_FILE}")
-    plt.close(fig) # Close figure
-
     # --- Shot Distance Analysis ---
     print("Generating shot distance analysis plot...")
     shots_df['SHOT_DISTANCE_FEET'] = np.sqrt(shots_df['LOC_X']**2 + shots_df['LOC_Y']**2) / 10

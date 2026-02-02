@@ -8,7 +8,16 @@ An R package for reproducible NBA data analysis.
 
 Here is an example of a shot efficiency heatmap that can be generated using the data collected with this package.
 
-![Shot Efficiency Heatmap](analysis/shot_efficiency_heatmap_2025-26.png)
+
+## Shot Density Heatmaps
+
+Here are examples of shot density hexbin plots that can be generated:
+
+### Dark Theme
+![Shot Density Hexbin Plot (Dark Theme)](analysis/shot_density_hexbin_2025-26_dark.png)
+
+
+
 
 ## Core pipeline
 
