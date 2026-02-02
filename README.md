@@ -4,11 +4,6 @@ An R package for reproducible NBA data analysis.
 
 `spatialSportsR` provides a reproducible data pipeline for NBA data, focusing on data from `stats.nba.com`.
 
-## Shot Efficiency Heatmap
-
-Here is an example of a shot efficiency heatmap that can be generated using the data collected with this package.
-
-
 ## Shot Density Heatmaps
 
 Here are examples of shot density hexbin plots that can be generated:
