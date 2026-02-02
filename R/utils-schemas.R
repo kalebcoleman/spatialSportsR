@@ -31,20 +31,6 @@ get_source <- function(league, source = NULL) {
   src
 }
 
-#' Get schema paths for a league/source
-#'
-#' @param league League identifier (nba/nhl/nfl/mlb).
-#' @param source Source identifier (nba only: espn, nba_stats).
-#' @return Named list of schema paths (or schema descriptors).
-#' @export
-schemas <- function(league, source = NULL) {
-  src <- get_source(league, source = source)
-  if (!is.function(src$schemas)) {
-    stop("Source for league ", src$league, " does not define schemas()", call. = FALSE)
-  }
-  src$schemas()
-}
-
 .normalize_source <- function(league, source = NULL, allow_all = FALSE) {
   league <- tolower(as.character(league))
   if (is.null(source) || is.na(source) || !nzchar(as.character(source))) {

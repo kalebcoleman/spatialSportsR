@@ -270,13 +270,6 @@ source_nba_espn <- function() {
 
       data.frame(x_unit = x_unit, y_unit = y_unit)
     },
-    schemas = function() {
-      list(
-        events = system.file("extdata/schemas/nba_spatial_events.json", package = "spatialSportsR"),
-        games = system.file("extdata/schemas/common_games.json", package = "spatialSportsR"),
-        teams = system.file("extdata/schemas/common_teams.json", package = "spatialSportsR")
-      )
-    },
     raw_pattern = "^summary_.*\\.json$"
   )
 }

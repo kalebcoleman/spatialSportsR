@@ -39,20 +39,6 @@ source_nba_stats <- function() {
         season_type = season_type,
         ...
       )
-    },
-    schemas = function() {
-      list(
-        games = list(keys = c("league", "source", "season", "game_id")),
-        team_box_traditional = list(keys = c("league", "source", "season", "game_id", "team_id")),
-        player_box_traditional = list(keys = c("league", "source", "season", "game_id", "player_id")),
-        team_box_advanced = list(keys = c("league", "source", "season", "game_id", "team_id")),
-        player_box_advanced = list(keys = c("league", "source", "season", "game_id", "player_id")),
-        team_box_fourfactors = list(keys = c("league", "source", "season", "game_id", "team_id")),
-        player_box_fourfactors = list(keys = c("league", "source", "season", "game_id", "player_id")),
-        player_box_usage = list(keys = c("league", "source", "season", "game_id", "player_id")),
-        pbp = list(keys = c("league", "source", "season", "game_id", "event_num")),
-        shots = list(keys = c("league", "source", "season", "game_id", "event_num"))
-      )
     }
   )
 }

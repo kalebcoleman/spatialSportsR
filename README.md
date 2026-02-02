@@ -1,18 +1,24 @@
 # spatialSportsR
 
-Reproducible multi-sport data pipeline in R. Current focus is NBA with two sources:
-- **ESPN summaries** (games, events, teams, team/player box, manifest)
-- **NBA Stats** (games, pbp, shots, team/player box variants, manifest)
+An R package for reproducible NBA data analysis.
 
-Outputs follow a contract and are written per season/source to `data/parsed/`, with optional SQLite export.
+`spatialSportsR` provides a reproducible data pipeline for NBA data, focusing on data from `stats.nba.com`.
+
+## Shot Efficiency Heatmap
+
+Here is an example of a shot efficiency heatmap that can be generated using the data collected with this package.
+
+![Shot Efficiency Heatmap](analysis/shot_efficiency_heatmap_2025-26.png)
 
 ## Core pipeline
+
+The core data processing pipeline is as follows:
 
 ```
 collect_raw() → parse_raw() → validate_tables() → write_tables()
 ```
 
-Batch helper:
+A batch helper is also available:
 
 ```
 collect_parse_write()
@@ -20,33 +26,16 @@ collect_parse_write()
 
 ## Key conventions
 
-- Parsed outputs are stored by season and source:
-  - `data/parsed/nba/espn/<season>/`
-  - `data/parsed/nba/nba_stats/<season>/`
-- Playoffs are stored under a `playoffs/` subfolder:
-  - `data/parsed/nba/espn/<season>/playoffs/`
-  - `data/parsed/nba/nba_stats/<season>/playoffs/`
-- Bundles are written when `bundle = TRUE`:
-  - ESPN: `espn_all.rds`
-  - NBA Stats: `nba_stats_all.rds`
-- `games` always includes `season` and `source`.
+- Parsed outputs are stored by season and source: `data/parsed/nba/nba_stats/<season>/`
+- Playoffs are stored under a `playoffs/` subfolder: `data/parsed/nba/nba_stats/<season>/playoffs/`
+- A bundled file is written when `bundle = TRUE`: `nba_stats_all.rds`
 - All tables include `season_type` (normalized to `regular` / `playoffs`).
+- `games` always includes `season` and `source`.
 - NBA Stats `games` includes `home_score`, `away_score`, `home_margin`, `away_margin`, `winner`.
-
-## NBA Stats notes
-
-- Season directory uses the NBA Stats season string (e.g., `2025-26`).
-- `pbp` is de-duplicated on `(league, source, season, game_id, event_num)`.
-- `team_box_usage` is intentionally dropped (player usage remains).
-
-## ESPN notes
-
-- Event coordinates are normalized to `[0,1]`.
-- `events$meta` is stored as JSON string.
 
 ## Common workflows
 
-### Backfill NBA Stats (fast + safe defaults)
+### Backfill NBA Stats
 
 ```r
 seasons <- 2020:2025
@@ -71,34 +60,14 @@ collect_parse_write(
 )
 ```
 
-### Backfill ESPN
-
-```r
-collect_parse_write(
-  league = "nba",
-  seasons = seasons,
-  source = "espn",
-  season_type = "regular",
-  format = "rds",
-  bundle = TRUE,
-  skip_existing = TRUE,
-  keep_tables = FALSE,
-  force = FALSE,
-  progress = TRUE,
-  quiet = TRUE,
-  validate = TRUE,
-  log_path = "logs/collect_parse_errors.csv"
-)
-```
-
 ## SQLite export (from RDS bundles)
 
 ```r
 write_sqlite_from_rds(
   root_dir = "data/parsed",
   league = "nba",
-  sources = c("espn", "nba_stats"),
-  seasons = c("2026", "2025-26"),
+  sources = c("nba_stats"),
+  seasons = c("2026"),
   season_type = "regular",
   db_path = "data/parsed/nba.sqlite",
   mode = "append",
