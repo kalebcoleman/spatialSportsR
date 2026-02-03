@@ -1,5 +1,7 @@
-
+import os
 import sqlite3
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,13 +50,15 @@ def draw_nba_court(ax=None, color='black', lw=2, outer_lines=False):
 
     return ax
 
-DB_PATH = "/Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed/nba.sqlite"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DB_PATH = REPO_ROOT / "data" / "parsed" / "nba.sqlite"
+DB_PATH = Path(os.getenv("SPATIALSPORTSR_DB_PATH", str(DEFAULT_DB_PATH))).expanduser()
 
 def load_shot_data(season, season_type="regular"):
     """
     Loads NBA shot chart data from the SQLite database for a given season.
     """
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(str(DB_PATH))
     
     # Construct the query to get all necessary columns
     query = """

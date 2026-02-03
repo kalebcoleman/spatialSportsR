@@ -10,7 +10,7 @@ write_sqlite_from_rds(
   sources = NULL,
   seasons = NULL,
   db_path,
-  mode = c("append", "upsert"),
+  mode = c("append", "overwrite", "upsert"),
   bundle = TRUE,
   bundle_name = NULL,
   season_type = NULL,
@@ -29,7 +29,8 @@ write_sqlite_from_rds(
 
 \item{db_path}{SQLite output path.}
 
-\item{mode}{Write mode for sqlite.}
+\item{mode}{Write mode for sqlite. Use \code{"append"} to add rows or \code{"overwrite"} to
+replace tables. \code{"upsert"} is deprecated (alias for \code{"overwrite"}).}
 
 \item{bundle}{Prefer bundled RDS if present.}
 

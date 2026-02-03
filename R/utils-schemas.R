@@ -2,28 +2,19 @@
 
 #' Get a league source implementation
 #'
-#' @param league League identifier (nba/nhl/nfl/mlb).
-#' @param source Source identifier (nba only: espn, nba_stats, or all).
+#' @param league League identifier (must be 'nba').
+#' @param source Source identifier ('espn' or 'nba_stats').
 #' @return Source list for the requested league/source.
 #' @export
 get_source <- function(league, source = NULL) {
   league <- tolower(as.character(league))
-  source <- .normalize_source(league, source)
-
-  fn <- switch(
-    league,
-    nba = function() source_nba(source),
-    nhl = source_nhl,
-    nfl = source_nfl,
-    mlb = source_mlb,
-    NULL
-  )
-
-  if (is.null(fn)) {
-    stop("Unsupported league: ", league, call. = FALSE)
+  if (league != "nba") {
+    stop("Unsupported league: ", league, ". Only 'nba' is supported.", call. = FALSE)
   }
 
-  src <- fn()
+  source <- .normalize_nba_source(source)
+  src <- source_nba(source)
+
   if (!is.list(src) || is.null(src$league)) {
     stop("Source for league ", league, " must return a list with $league", call. = FALSE)
   }
@@ -31,25 +22,29 @@ get_source <- function(league, source = NULL) {
   src
 }
 
-.normalize_source <- function(league, source = NULL, allow_all = FALSE) {
-  league <- tolower(as.character(league))
+.normalize_nba_source <- function(source = NULL, allow_all = FALSE) {
   if (is.null(source) || is.na(source) || !nzchar(as.character(source))) {
-    return(if (league == "nba") "espn" else "default")
+    return("espn")
   }
 
   source <- tolower(as.character(source))
-  if (league == "nba") {
-    if (allow_all && source == "all") return("all")
-    if (source %in% c("espn", "nba_stats")) return(source)
-    stop("Unsupported NBA source: ", source, call. = FALSE)
+  if (allow_all && source == "all") {
+    return("all")
   }
-
-  if (source %in% c("default", "all")) return("default")
-  stop("Unsupported source for league ", league, ": ", source, call. = FALSE)
+  if (source %in% c("espn", "nba_stats")) {
+    return(source)
+  }
+  stop("Unsupported NBA source: ", source, call. = FALSE)
 }
 
 .resolve_sources <- function(league, source = NULL) {
-  source <- .normalize_source(league, source, allow_all = TRUE)
-  if (league == "nba" && source == "all") return(nba_sources())
+  league <- tolower(as.character(league))
+  if (league != "nba") {
+    stop("Unsupported league: ", league, ". Only 'nba' is supported.", call. = FALSE)
+  }
+  source <- .normalize_nba_source(source, allow_all = TRUE)
+  if (source == "all") {
+    return(nba_sources())
+  }
   source
 }

@@ -12,7 +12,7 @@ collect_parse_write(
   out_dir = "data/parsed",
   format = c("rds", "csv", "sqlite"),
   db_path = NULL,
-  mode = c("append", "upsert"),
+  mode = c("append", "overwrite", "upsert"),
   force = FALSE,
   progress = TRUE,
   quiet = FALSE,
@@ -27,7 +27,7 @@ collect_parse_write(
 )
 }
 \arguments{
-\item{league}{League identifier (nba/nhl/nfl/mlb).}
+\item{league}{League identifier (currently only "nba" is supported).}
 
 \item{seasons}{Vector of seasons (e.g., 2006:2025).}
 
@@ -41,7 +41,8 @@ collect_parse_write(
 
 \item{db_path}{SQLite path for sqlite output.}
 
-\item{mode}{Write mode for sqlite.}
+\item{mode}{Write mode for sqlite. Use \code{"append"} to add rows or \code{"overwrite"} to
+replace tables. \code{"upsert"} is deprecated (alias for \code{"overwrite"}).}
 
 \item{force}{Force re-download even if cached.}
 

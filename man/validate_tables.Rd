@@ -9,9 +9,9 @@ validate_tables(tables, league, source = NULL)
 \arguments{
 \item{tables}{List of tables (games/events required for core contract).}
 
-\item{league}{League identifier.}
+\item{league}{League identifier (currently only "nba" is supported).}
 
-\item{source}{Source identifier (nba only: espn, nba_stats).}
+\item{source}{Source identifier for NBA ("espn" or "nba_stats").}
 }
 \value{
 Invisibly TRUE on success.

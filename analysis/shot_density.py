@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.patches import Arc, Circle, Rectangle
 
-DB_PATH = "/Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed/nba.sqlite"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DB_PATH = REPO_ROOT / "data" / "parsed" / "nba.sqlite"
+DB_PATH = Path(os.getenv("SPATIALSPORTSR_DB_PATH", str(DEFAULT_DB_PATH))).expanduser()
 
 
 def normalize_season_type(season_type):
@@ -263,7 +265,7 @@ def draw_court(
 
 def load_shots(season, season_type="playoffs"):
     season_type = normalize_season_type(season_type)
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(str(DB_PATH))
     df = pd.read_sql_query(
         """
         SELECT LOC_X, LOC_Y, SHOT_MADE_FLAG, SHOT_TYPE, SHOT_ZONE_BASIC
@@ -620,5 +622,4 @@ if __name__ == "__main__":
         stat_value_cmap_index=0.6,
         show_plot=True # Show the last plot generated
     )
-
 

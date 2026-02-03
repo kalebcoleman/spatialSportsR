@@ -4,11 +4,11 @@
 #' @param format Output format.
 #' @param out_dir Output directory for rds/csv.
 #' @param db_path SQLite path for sqlite output.
-#' @param mode Write mode for sqlite.
+#' @param mode Write mode for sqlite. Use `"append"` to add rows or `"overwrite"` to
+#'   replace tables. `"upsert"` is deprecated (alias for `"overwrite"`).
 #' @param skip_existing Skip writing rds/csv files if they already exist.
 #' @param bundle Write bundled RDS after per-table writes.
 #' @param bundle_name Bundle file name without extension.
-#' @param season_type Optional season type (e.g., "regular", "playoffs").
 #' @param table_prefix Optional prefix for sqlite table names. Use "source" to prefix with source name.
 #' @return Invisibly TRUE on success.
 #' @export
@@ -17,7 +17,7 @@ write_tables <- function(tables,
                          format = c("rds", "csv", "sqlite"),
                          out_dir = "data/parsed",
                          db_path = NULL,
-                         mode = c("append", "upsert"),
+                         mode = c("append", "overwrite", "upsert"),
                          skip_existing = TRUE,
                          bundle = FALSE,
                          bundle_name = NULL,
@@ -26,6 +26,13 @@ write_tables <- function(tables,
 
   format <- match.arg(format)
   mode <- match.arg(mode)
+  if (mode == "upsert") {
+    warning(
+      "write_tables(mode = 'upsert') is deprecated and currently behaves like mode = 'overwrite'. Use mode = 'overwrite' instead.",
+      call. = FALSE
+    )
+    mode <- "overwrite"
+  }
 
   if (format %in% c("rds", "csv")) {
     if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
@@ -73,22 +80,84 @@ write_tables <- function(tables,
     con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
     on.exit(DBI::dbDisconnect(con), add = TRUE)
 
-    for (nm in names(tables)) {
-      tbl <- tables[[nm]]
-      if (is.null(tbl)) next
-      if (!is.data.frame(tbl)) next
-      table_name <- if (!is.null(table_prefix) && nzchar(table_prefix)) {
-        paste(table_prefix, nm, sep = "_")
-      } else {
-        nm
+    DBI::dbWithTransaction(con, {
+      for (nm in names(tables)) {
+        tbl <- tables[[nm]]
+        if (is.null(tbl)) next
+        if (!is.data.frame(tbl)) next
+
+        # Drop duplicate columns (case-insensitive) to avoid dbWriteTable failures.
+        if (any(duplicated(tolower(names(tbl))))) {
+          keep_idx <- !duplicated(tolower(names(tbl)))
+          tbl <- tbl[, keep_idx, drop = FALSE]
+        }
+
+        # Normalize date/time columns to ISO strings for SQLite readability.
+        for (col in names(tbl)) {
+          if (inherits(tbl[[col]], "Date")) {
+            tbl[[col]] <- format(tbl[[col]], "%Y-%m-%d")
+          } else if (inherits(tbl[[col]], c("POSIXct", "POSIXt"))) {
+            tbl[[col]] <- format(tbl[[col]], "%Y-%m-%d %H:%M:%S")
+          }
+        }
+
+        table_name <- if (!is.null(table_prefix) && nzchar(table_prefix)) {
+          paste(table_prefix, nm, sep = "_")
+        } else {
+          nm
+        }
+
+        if (mode == "append" && DBI::dbExistsTable(con, table_name)) {
+          existing_cols <- DBI::dbListFields(con, table_name)
+          existing_lower <- tolower(existing_cols)
+          incoming_lower <- tolower(names(tbl))
+          new_cols <- names(tbl)[!(incoming_lower %in% existing_lower)]
+          missing_cols <- existing_cols[!(existing_lower %in% incoming_lower)]
+
+          if (length(new_cols) > 0) {
+            for (col in new_cols) {
+              DBI::dbExecute(
+                con,
+                sprintf(
+                  "ALTER TABLE %s ADD COLUMN %s",
+                  DBI::dbQuoteIdentifier(con, table_name),
+                  DBI::dbQuoteIdentifier(con, col)
+                )
+              )
+            }
+          }
+
+          if (length(missing_cols) > 0) {
+            for (col in missing_cols) {
+              tbl[[col]] <- NA
+            }
+          }
+
+          tbl <- tbl[, c(existing_cols, setdiff(names(tbl), existing_cols)), drop = FALSE]
+        }
+
+        DBI::dbWriteTable(
+          con,
+          table_name,
+          tbl,
+          append = (mode == "append"),
+          overwrite = (mode == "overwrite")
+        )
       }
-      DBI::dbWriteTable(con, table_name, tbl, append = (mode == "append"), overwrite = (mode != "append"))
-    }
+    })
   }
 
   invisible(TRUE)
 }
 
+#' Write a bundled RDS file from per-table RDS outputs
+#'
+#' @param table_names Character vector of table names (without extensions).
+#' @param out_dir Directory containing per-table `.rds` files.
+#' @param bundle_name Bundle file name without extension.
+#' @param skip_existing If `TRUE` and the bundle exists, return it without rewriting.
+#' @return The bundle path (invisibly).
+#' @export
 write_bundle_rds <- function(table_names, out_dir, bundle_name, skip_existing = FALSE) {
   if (is.null(bundle_name) || !nzchar(bundle_name)) {
     stop("bundle_name is required when bundle = TRUE", call. = FALSE)
@@ -116,7 +185,8 @@ write_bundle_rds <- function(table_names, out_dir, bundle_name, skip_existing = 
 #' @param sources Optional character vector of sources to include.
 #' @param seasons Optional vector of season folder names to include.
 #' @param db_path SQLite output path.
-#' @param mode Write mode for sqlite.
+#' @param mode Write mode for sqlite. Use `"append"` to add rows or `"overwrite"` to
+#'   replace tables. `"upsert"` is deprecated (alias for `"overwrite"`).
 #' @param bundle Prefer bundled RDS if present.
 #' @param bundle_name Optional bundle name override (without extension).
 #' @param table_prefix Optional prefix for sqlite table names.
@@ -128,13 +198,20 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
                                   sources = NULL,
                                   seasons = NULL,
                                   db_path,
-                                  mode = c("append", "upsert"),
+                                  mode = c("append", "overwrite", "upsert"),
                                   bundle = TRUE,
                                   bundle_name = NULL,
                                   season_type = NULL,
                                   table_prefix = NULL,
                                   debug = FALSE) {
   mode <- match.arg(mode)
+  if (mode == "upsert") {
+    warning(
+      "write_sqlite_from_rds(mode = 'upsert') is deprecated and currently behaves like mode = 'overwrite'. Use mode = 'overwrite' instead.",
+      call. = FALSE
+    )
+    mode <- "overwrite"
+  }
   bundle <- isTRUE(bundle)
   debug <- isTRUE(debug)
 
@@ -251,67 +328,69 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
 
       if (!is.list(tables) || length(tables) == 0) next
 
-      for (nm in names(tables)) {
-        tbl <- tables[[nm]]
-        if (is.null(tbl) || !is.data.frame(tbl)) {
-          src_path <- if (!is.null(table_paths) && nm %in% names(table_paths)) table_paths[[nm]] else NA_character_
-          message("write_sqlite_from_rds: skipped non-data.frame table=", nm, " path=", src_path, " rows=0")
-          next
-        }
-        if (any(duplicated(tolower(names(tbl))))) {
-          keep_idx <- !duplicated(tolower(names(tbl)))
+      DBI::dbWithTransaction(con, {
+        for (nm in names(tables)) {
+          tbl <- tables[[nm]]
+          if (is.null(tbl) || !is.data.frame(tbl)) {
+            src_path <- if (!is.null(table_paths) && nm %in% names(table_paths)) table_paths[[nm]] else NA_character_
+            message("write_sqlite_from_rds: skipped non-data.frame table=", nm, " path=", src_path, " rows=0")
+            next
+          }
+          if (any(duplicated(tolower(names(tbl))))) {
+            keep_idx <- !duplicated(tolower(names(tbl)))
+            if (isTRUE(debug)) {
+              drop_cols <- names(tbl)[!keep_idx]
+              message("write_sqlite_from_rds: dropping duplicate columns (case-insensitive): ", paste(drop_cols, collapse = ","))
+            }
+            tbl <- tbl[, keep_idx, drop = FALSE]
+          }
+          # Normalize date/time columns to ISO strings for SQLite readability.
+          for (col in names(tbl)) {
+            if (inherits(tbl[[col]], "Date")) {
+              tbl[[col]] <- format(tbl[[col]], "%Y-%m-%d")
+            } else if (inherits(tbl[[col]], c("POSIXct", "POSIXt"))) {
+              tbl[[col]] <- format(tbl[[col]], "%Y-%m-%d %H:%M:%S")
+            }
+          }
+          prefix <- NULL
+          if (!is.null(table_prefix) && nzchar(table_prefix)) {
+            prefix <- if (identical(table_prefix, "source")) src_name else table_prefix
+          } else if (league == "nba") {
+            prefix <- if (src_name == "nba_stats") "nba_stats" else paste("nba", src_name, sep = "_")
+          }
+          table_name <- if (!is.null(prefix) && nzchar(prefix)) paste(prefix, nm, sep = "_") else nm
+          if (mode == "append" && DBI::dbExistsTable(con, table_name)) {
+            existing_cols <- DBI::dbListFields(con, table_name)
+            existing_lower <- tolower(existing_cols)
+            incoming_lower <- tolower(names(tbl))
+            new_cols <- names(tbl)[!(incoming_lower %in% existing_lower)]
+            missing_cols <- existing_cols[!(existing_lower %in% incoming_lower)]
+
+            if (length(new_cols) > 0) {
+              for (col in new_cols) {
+                DBI::dbExecute(
+                  con,
+                  sprintf("ALTER TABLE %s ADD COLUMN %s", DBI::dbQuoteIdentifier(con, table_name), DBI::dbQuoteIdentifier(con, col))
+                )
+              }
+            }
+
+            if (length(missing_cols) > 0) {
+              for (col in missing_cols) {
+                tbl[[col]] <- NA
+              }
+            }
+
+            tbl <- tbl[, c(existing_cols, setdiff(names(tbl), existing_cols)), drop = FALSE]
+          }
+
+          DBI::dbWriteTable(con, table_name, tbl, append = (mode == "append"), overwrite = (mode == "overwrite"))
           if (isTRUE(debug)) {
-            drop_cols <- names(tbl)[!keep_idx]
-            message("write_sqlite_from_rds: dropping duplicate columns (case-insensitive): ", paste(drop_cols, collapse = ","))
-          }
-          tbl <- tbl[, keep_idx, drop = FALSE]
-        }
-        # Normalize date/time columns to ISO strings for SQLite readability.
-        for (col in names(tbl)) {
-          if (inherits(tbl[[col]], "Date")) {
-            tbl[[col]] <- format(tbl[[col]], "%Y-%m-%d")
-          } else if (inherits(tbl[[col]], c("POSIXct", "POSIXt"))) {
-            tbl[[col]] <- format(tbl[[col]], "%Y-%m-%d %H:%M:%S")
+            src_path <- if (!is.null(table_paths) && nm %in% names(table_paths)) table_paths[[nm]] else NA_character_
+            message("write_sqlite_from_rds: wrote table=", table_name, " rows=", nrow(tbl), " path=", src_path)
           }
         }
-        prefix <- NULL
-        if (!is.null(table_prefix) && nzchar(table_prefix)) {
-          prefix <- if (identical(table_prefix, "source")) src_name else table_prefix
-        } else if (league == "nba") {
-          prefix <- if (src_name == "nba_stats") "nba_stats" else paste("nba", src_name, sep = "_")
-        }
-        table_name <- if (!is.null(prefix) && nzchar(prefix)) paste(prefix, nm, sep = "_") else nm
-        if (mode == "append" && DBI::dbExistsTable(con, table_name)) {
-          existing_cols <- DBI::dbListFields(con, table_name)
-          existing_lower <- tolower(existing_cols)
-          incoming_lower <- tolower(names(tbl))
-          new_cols <- names(tbl)[!(incoming_lower %in% existing_lower)]
-          missing_cols <- existing_cols[!(existing_lower %in% incoming_lower)]
-
-          if (length(new_cols) > 0) {
-            for (col in new_cols) {
-              DBI::dbExecute(
-                con,
-                sprintf("ALTER TABLE %s ADD COLUMN %s", DBI::dbQuoteIdentifier(con, table_name), DBI::dbQuoteIdentifier(con, col))
-              )
-            }
-          }
-
-          if (length(missing_cols) > 0) {
-            for (col in missing_cols) {
-              tbl[[col]] <- NA
-            }
-          }
-
-          tbl <- tbl[, c(existing_cols, setdiff(names(tbl), existing_cols)), drop = FALSE]
-        }
-
-        DBI::dbWriteTable(con, table_name, tbl, append = (mode == "append"), overwrite = (mode != "append"))
-        if (isTRUE(debug)) {
-          src_path <- if (!is.null(table_paths) && nm %in% names(table_paths)) table_paths[[nm]] else NA_character_
-          message("write_sqlite_from_rds: wrote table=", table_name, " rows=", nrow(tbl), " path=", src_path)
-        }
-      }
+      })
 
       key <- paste(src_name, season_label, sep = "/")
       results[[key]] <- list(
@@ -327,14 +406,15 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
 
 #' Collect, parse, validate, and write data for multiple seasons
 #'
-#' @param league League identifier (nba/nhl/nfl/mlb).
+#' @param league League identifier (currently only "nba" is supported).
 #' @param source Source identifier (nba only: espn, nba_stats, or all).
 #' @param seasons Vector of seasons (e.g., 2006:2025).
 #' @param raw_dir Directory for raw data.
 #' @param out_dir Output directory for rds/csv.
 #' @param format Output format for write_tables().
 #' @param db_path SQLite path for sqlite output.
-#' @param mode Write mode for sqlite.
+#' @param mode Write mode for sqlite. Use `"append"` to add rows or `"overwrite"` to
+#'   replace tables. `"upsert"` is deprecated (alias for `"overwrite"`).
 #' @param skip_existing Skip writing rds/csv files if they already exist.
 #' @param force Force re-download even if cached.
 #' @param progress Show a progress bar while collecting/parsing.
@@ -352,7 +432,7 @@ collect_parse_write <- function(league,
                                 out_dir = "data/parsed",
                                 format = c("rds", "csv", "sqlite"),
                                 db_path = NULL,
-                                mode = c("append", "upsert"),
+                                mode = c("append", "overwrite", "upsert"),
                                 force = FALSE,
                                 progress = TRUE,
                                 quiet = FALSE,
@@ -366,6 +446,13 @@ collect_parse_write <- function(league,
                                 ...) {
   format <- match.arg(format)
   mode <- match.arg(mode)
+  if (mode == "upsert") {
+    warning(
+      "collect_parse_write(mode = 'upsert') is deprecated and currently behaves like mode = 'overwrite'. Use mode = 'overwrite' instead.",
+      call. = FALSE
+    )
+    mode <- "overwrite"
+  }
   validate <- isTRUE(validate)
   keep_tables <- isTRUE(keep_tables)
   skip_existing <- isTRUE(skip_existing)
@@ -443,20 +530,23 @@ collect_parse_write <- function(league,
       season_out_dir <- out_dir
       bundle_name <- NULL
       table_prefix <- NULL
-        if (format %in% c("rds", "csv")) {
-          season_out_dir <- if (league == "nba") {
-            file.path(out_dir, league, src_name, season_label)
+      if (format %in% c("rds", "csv")) {
+        season_out_dir <- if (league == "nba") {
+          file.path(out_dir, league, src_name, season_label)
+        } else {
+          file.path(out_dir, league, as.character(season))
+        }
+        stype_dir <- .normalize_season_type_dir(season_type)
+        if (!is.null(stype_dir)) {
+          season_out_dir <- file.path(season_out_dir, stype_dir)
+        }
+
+        if (isTRUE(bundle)) {
+          bundle_name <- if (league == "nba") {
+            if (src_name == "espn") "espn_all" else "nba_stats_all"
           } else {
-            file.path(out_dir, league, as.character(season))
+            paste0(league, "_all")
           }
-          stype_dir <- .normalize_season_type_dir(season_type)
-          if (!is.null(stype_dir)) {
-            season_out_dir <- file.path(season_out_dir, stype_dir)
-          }
-          if (league == "nba") {
-            bundle_name <- if (src_name == "espn") "espn_all" else "nba_stats_all"
-          } else if (isTRUE(bundle) && is.null(bundle_name)) {
-          bundle_name <- paste0(league, "_all")
         }
       }
 

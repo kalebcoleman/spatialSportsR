@@ -675,9 +675,9 @@ nba_stats_parse_raw_dir <- function(season, raw_dir, season_type = "Regular Seas
     shots = shots,
     manifest = manifest
   )
-  stype <- tolower(as.character(season_type))
-  if (stype == "regular season") stype <- "regular"
-  if (stype == "playoffs") stype <- "playoffs"
+  stype <- tolower(trimws(as.character(season_type)))
+  if (stype %in% c("regular season", "regular", "reg")) stype <- "regular"
+  if (stype %in% c("playoffs", "postseason", "playoff")) stype <- "playoffs"
   for (nm in names(tables)) {
     tbl <- tables[[nm]]
     if (!is.null(tbl) && is.data.frame(tbl)) {

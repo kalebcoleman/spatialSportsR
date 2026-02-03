@@ -30,18 +30,18 @@ The analysis is divided into two main scripts that should be run in order:
 
 2.  **Install Dependencies**: Install the required packages from the project root:
     ```bash
-    .venv/bin/python -m pip install -r ../requirements.txt
+    .venv/bin/python -m pip install -r requirements.txt
     ```
-    *(Note: The `../` is because these commands should be run from within the `analysis/` directory if you are reading this locally).*
+    *(If you run this from within the `analysis/` directory instead, use `../requirements.txt`.)*
 
 3.  **Run the Data Pipeline**: Execute the main processing script.
     ```bash
-    .venv/bin/python expected_points_analysis.py
+    .venv/bin/python analysis/expected_points_analysis.py
     ```
 
 4.  **Run the Final Analysis**: Execute the player-level analysis script.
     ```bash
-    .venv/bin/python player_performance_analysis.py
+    .venv/bin/python analysis/player_performance_analysis.py
     ```
 
 ## Generated Files
@@ -50,3 +50,7 @@ The analysis is divided into two main scripts that should be run in order:
 *   **`shots_with_xp.parquet`**: The final dataset containing all shots from the 2022-23 season, enriched with xP and POE values.
 *   **`*.png`**: Output visualizations from the analysis scripts.
 
+## Database Path
+
+By default, scripts read from `data/parsed/nba.sqlite` relative to the repo root.
+You can override this via `SPATIALSPORTSR_DB_PATH`.

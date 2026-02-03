@@ -9,7 +9,7 @@ write_tables(
   format = c("rds", "csv", "sqlite"),
   out_dir = "data/parsed",
   db_path = NULL,
-  mode = c("append", "upsert"),
+  mode = c("append", "overwrite", "upsert"),
   skip_existing = TRUE,
   bundle = FALSE,
   bundle_name = NULL,
@@ -25,7 +25,8 @@ write_tables(
 
 \item{db_path}{SQLite path for sqlite output.}
 
-\item{mode}{Write mode for sqlite.}
+\item{mode}{Write mode for sqlite. Use \code{"append"} to add rows or \code{"overwrite"} to
+replace tables. \code{"upsert"} is deprecated (alias for \code{"overwrite"}).}
 
 \item{skip_existing}{Skip writing rds/csv files if they already exist.}
 
@@ -34,8 +35,6 @@ write_tables(
 \item{bundle_name}{Bundle file name without extension.}
 
 \item{table_prefix}{Optional prefix for sqlite table names. Use "source" to prefix with source name.}
-
-\item{season_type}{Optional season type (e.g., "regular", "playoffs").}
 }
 \value{
 Invisibly TRUE on success.

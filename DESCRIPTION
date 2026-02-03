@@ -2,7 +2,7 @@ Package: spatialSportsR
 Title: Multi-Sport Spatial Data Engine
 Version: 0.0.0.9000
 Authors@R: person("Kaleb", "", email = "kaleb.a.coleman@gmail.com", role = c("aut", "cre"))
-Description: Reproducible multi-sport data pipeline with standardized spatial event tables.
+Description: Reproducible sports data pipeline with standardized spatial event tables (currently NBA only).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

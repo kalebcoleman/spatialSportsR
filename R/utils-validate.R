@@ -20,15 +20,18 @@ assert_required_cols <- function(df, required, table_name) {
 #' Validate standardized tables against the contract
 #'
 #' @param tables List of tables (games/events required for core contract).
-#' @param league League identifier.
-#' @param source Source identifier (nba only: espn, nba_stats).
+#' @param league League identifier (currently only "nba" is supported).
+#' @param source Source identifier for NBA ("espn" or "nba_stats").
 #' @return Invisibly TRUE on success.
 #' @export
 validate_tables <- function(tables, league, source = NULL) {
   if (!is.list(tables)) stop("tables must be a list", call. = FALSE)
 
   league <- tolower(as.character(league))
-  source <- .normalize_source(league, source)
+  if (league != "nba") {
+    stop("Unsupported league: ", league, ". Only 'nba' is supported.", call. = FALSE)
+  }
+  source <- .normalize_nba_source(source)
 
   if (league == "nba" && source == "nba_stats") {
     return(.validate_nba_stats_tables(tables))

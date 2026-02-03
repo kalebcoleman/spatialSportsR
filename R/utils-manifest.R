@@ -1,8 +1,8 @@
 #' Report what raw data is present for a league + season
 #'
-#' @param league League identifier (nba/nhl/nfl/mlb).
+#' @param league League identifier (currently only "nba" is supported).
 #' @param season Season identifier.
-#' @param source Source identifier (nba only: espn, nba_stats, or all).
+#' @param source Source identifier ("espn", "nba_stats", or "all").
 #' @param raw_dir Directory for raw data.
 #' @param season_type Optional season type (e.g., "regular", "playoffs").
 #' @return A list with present game ids, index_path, and league_dir.
@@ -31,7 +31,9 @@ manifest <- function(league, season, source = NULL, raw_dir = "data/raw", season
   if (league == "nba" && source == "espn") {
     raw_files <- list.files(league_dir, pattern = "^summary_.*\\.json$", full.names = FALSE)
     present <- .manifest_extract_game_ids(raw_files)
-    index_path <- file.path(league_dir, paste0("nba_index_", season, "_regular.json"))
+    stype <- if (is.null(season_type) || !nzchar(as.character(season_type))) "" else tolower(as.character(season_type)[1])
+    idx_suffix <- if (stype %in% c("playoffs", "postseason")) "postseason" else "regular"
+    index_path <- file.path(league_dir, paste0("nba_index_", season, "_", idx_suffix, ".json"))
   } else if (league == "nba" && source == "nba_stats") {
     game_dirs <- list.dirs(league_dir, full.names = FALSE, recursive = FALSE)
     game_dirs <- setdiff(game_dirs, basename(league_dir))

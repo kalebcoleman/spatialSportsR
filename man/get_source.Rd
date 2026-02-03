@@ -8,9 +8,9 @@ Get a league source implementation}
 get_source(league, source = NULL)
 }
 \arguments{
-\item{league}{League identifier (nba/nhl/nfl/mlb).}
+\item{league}{League identifier (must be 'nba').}
 
-\item{source}{Source identifier (nba only: espn, nba_stats, or all).}
+\item{source}{Source identifier ('espn' or 'nba_stats').}
 }
 \value{
 Source list for the requested league/source.

@@ -16,7 +16,7 @@ parse_raw(
 )
 }
 \arguments{
-\item{league}{League identifier (nba/nhl/nfl/mlb).}
+\item{league}{League identifier (currently only "nba" is supported).}
 
 \item{season}{Season identifier.}
 

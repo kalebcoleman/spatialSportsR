@@ -20,8 +20,6 @@ http_get(url, dest, force = FALSE, sleep = 0.25, ...)
 }
 \value{
 The destination path.
-
-The destination path.
 }
 \description{
 HTTP helpers (rate limiting + basic caching hooks)

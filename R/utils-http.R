@@ -9,15 +9,6 @@
 #' @param ... Extra arguments (reserved).
 #' @return The destination path.
 #' @export
-#' Download a file with simple caching
-#'
-#' @param url Source URL.
-#' @param dest Destination path.
-#' @param force Force download even if cached.
-#' @param sleep Seconds to sleep for rate limiting.
-#' @param ... Extra arguments (reserved).
-#' @return The destination path.
-#' @export
 http_get <- function(url, dest, force = FALSE, sleep = 0.25, ...) {
   if (!force && file.exists(dest)) {
     return(dest)
@@ -150,6 +141,10 @@ request_with_proxy <- function(url,
                                origin = "https://stats.nba.com",
                                referer = "https://www.nba.com/",
                                ...) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    stop("Install jsonlite to parse NBA Stats responses", call. = FALSE)
+  }
+
   headers <- c(
     `Host` = "stats.nba.com",
     `User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:72.0) Gecko/20100101 Firefox/72.0",
@@ -165,29 +160,95 @@ request_with_proxy <- function(url,
     `Cache-Control` = "no-cache"
   )
 
-  proxy_cfg <- NULL
-  if (!is.null(proxy)) {
-    if (is.list(proxy)) {
-      proxy_cfg <- do.call(httr::use_proxy, proxy)
-    } else if (is.character(proxy) && length(proxy) == 1) {
-      proxy_cfg <- httr::use_proxy(proxy)
+  params <- if (is.null(params)) list() else params
+  if (!is.list(params)) stop("params must be a list", call. = FALSE)
+  if (length(params) >= 1 && (is.null(names(params)) || any(!nzchar(names(params))))) {
+    stop("params must be a named list", call. = FALSE)
+  }
+
+  # Build full URL with query params (avoid hard dependency on httr).
+  if (length(params) >= 1) {
+    if (requireNamespace("httr", quietly = TRUE)) {
+      url <- httr::modify_url(url, query = params)
+    } else {
+      query_vals <- vapply(params, function(x) utils::URLencode(as.character(x)[1]), character(1))
+      qs <- paste0(names(params), "=", query_vals)
+      url <- paste0(url, if (grepl("\\?", url)) "&" else "?", paste(qs, collapse = "&"))
     }
   }
 
-  if (length(params) >= 1) {
-    url <- httr::modify_url(url, query = params)
+  # Prefer rvest+httr when available (keeps compatibility with existing behavior).
+  if (requireNamespace("rvest", quietly = TRUE) && requireNamespace("httr", quietly = TRUE)) {
+    proxy_cfg <- NULL
+    if (!is.null(proxy)) {
+      if (is.list(proxy)) {
+        proxy_cfg <- do.call(httr::use_proxy, proxy)
+      } else if (is.character(proxy) && length(proxy) == 1) {
+        proxy_cfg <- httr::use_proxy(proxy)
+      }
+    }
+
+    res <- rvest::session(
+      url = url,
+      httr::add_headers(.headers = headers),
+      httr::timeout(60),
+      if (!is.null(proxy_cfg)) proxy_cfg,
+      ...
+    )
+
+    return(
+      httr::content(res$response, as = "text", encoding = "UTF-8") |>
+        jsonlite::fromJSON(simplifyVector = FALSE)
+    )
   }
 
-  res <- rvest::session(
-    url = url,
-    httr::add_headers(.headers = headers),
-    httr::timeout(60),
-    if (!is.null(proxy_cfg)) proxy_cfg,
-    ...
-  )
+  # Fallback: httr2
+  if (requireNamespace("httr2", quietly = TRUE)) {
+    req <- httr2::request(url)
+    req <- do.call(httr2::req_headers, c(list(req), as.list(headers)))
+    req <- httr2::req_timeout(req, 60)
 
-  httr::content(res$response, as = "text", encoding = "UTF-8") |>
-    jsonlite::fromJSON(simplifyVector = FALSE)
+    if (!is.null(proxy)) {
+      if (is.list(proxy)) {
+        req <- do.call(httr2::req_proxy, c(list(req), proxy))
+      } else if (is.character(proxy) && length(proxy) == 1) {
+        req <- httr2::req_proxy(req, url = proxy)
+      }
+    }
+
+    resp <- httr2::req_perform(req)
+    status_code <- httr2::resp_status(resp)
+    if (is.na(status_code) || status_code < 200 || status_code >= 300) {
+      stop(
+        sprintf("NBA Stats request failed with status %s (%s)", status_code, httr2::resp_status_desc(resp)),
+        call. = FALSE
+      )
+    }
+    raw_text <- httr2::resp_body_string(resp)
+    return(jsonlite::fromJSON(raw_text, simplifyVector = FALSE))
+  }
+
+  # Fallback: curl
+  if (requireNamespace("curl", quietly = TRUE)) {
+    h <- curl::new_handle()
+    curl::handle_setheaders(h, .list = as.list(headers))
+    curl::handle_setopt(h, timeout = 60)
+    if (!is.null(proxy)) {
+      if (is.list(proxy) && !is.null(proxy$url)) {
+        curl::handle_setopt(h, proxy = proxy$url)
+      } else if (is.character(proxy) && length(proxy) == 1) {
+        curl::handle_setopt(h, proxy = proxy)
+      }
+    }
+    resp <- curl::curl_fetch_memory(url, handle = h)
+    status_code <- resp$status_code
+    if (is.na(status_code) || status_code < 200 || status_code >= 300) {
+      stop(sprintf("NBA Stats request failed with status %s", status_code), call. = FALSE)
+    }
+    return(jsonlite::fromJSON(rawToChar(resp$content), simplifyVector = FALSE))
+  }
+
+  stop("Install httr, httr2, or curl to use request_with_proxy()", call. = FALSE)
 }
 
 #' NBA Stats API GET helper

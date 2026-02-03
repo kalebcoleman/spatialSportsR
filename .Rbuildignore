@@ -1,4 +1,11 @@
 ^requirements\.txt$
+^analysis$
+^data$
+^logs$
+^\.venv$
+^\.skillenv$
+^\.DS_Store$
+^\.Rhistory$
 ^renv$
 ^renv\.lock$
 ^.*\.Rproj$

@@ -1,6 +1,6 @@
 #' Parse raw data for a league + season into standardized tables
 #'
-#' @param league League identifier (nba/nhl/nfl/mlb).
+#' @param league League identifier (currently only "nba" is supported).
 #' @param season Season identifier.
 #' @param source Source identifier (nba only: espn, nba_stats, or all).
 #' @param raw_dir Directory for raw data.
