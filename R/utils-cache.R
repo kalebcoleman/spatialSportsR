@@ -7,6 +7,7 @@
 #' @param season Season identifier.
 #' @param filename File name.
 #' @param source Optional source (nba only).
+#' @param season_type Optional season type (e.g., "regular", "playoffs").
 #' @return A cache file path.
 #' @export
 cache_path <- function(raw_dir, league, season, filename, source = NULL, season_type = NULL) {

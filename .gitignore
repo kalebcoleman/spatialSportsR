@@ -5,6 +5,7 @@
 .DS_Store
 __pycache__/
 *.py[cod]
+..Rcheck/
 
 # data outputs
 /data/raw/

@@ -30,3 +30,5 @@ plot_events <- function(events, league, ...) {
     ggplot2::geom_point(alpha = 0.3) +
     ggplot2::labs(title = paste("Events:", league))
 }
+
+utils::globalVariables(".data")

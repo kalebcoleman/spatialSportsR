@@ -24,6 +24,8 @@ cache_path(
 \item{filename}{File name.}
 
 \item{source}{Optional source (nba only).}
+
+\item{season_type}{Optional season type (e.g., "regular", "playoffs").}
 }
 \value{
 A cache file path.

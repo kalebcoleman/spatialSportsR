@@ -1,9 +1,13 @@
 Package: spatialSportsR
 Title: Multi-Sport Spatial Data Engine
 Version: 0.0.0.9000
-Authors@R: person("Kaleb", "", email = "kaleb.a.coleman@gmail.com", role = c("aut", "cre"))
+Authors@R: person("Kaleb", "Coleman", email = "kaleb.a.coleman@gmail.com", role = c("aut", "cre"))
+Author: Kaleb Coleman
+Maintainer: Kaleb Coleman <kaleb.a.coleman@gmail.com>
 Description: Reproducible sports data pipeline with standardized spatial event tables (currently NBA only).
 License: MIT + file LICENSE
+Depends:
+    R (>= 4.1.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
@@ -25,5 +29,8 @@ Suggests:
     patchwork,
     gridExtra,
     future,
-    future.apply
+    future.apply,
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
+VignetteBuilder: knitr

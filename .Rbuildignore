@@ -1,7 +1,10 @@
 ^requirements\.txt$
 ^analysis$
+^app$
 ^data$
 ^logs$
+^\\.github$
+^\\.\\.?Rcheck$
 ^\.venv$
 ^\.skillenv$
 ^\.DS_Store$

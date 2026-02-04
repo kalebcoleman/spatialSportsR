@@ -29,6 +29,8 @@ nba_stats_collect_season(
 \item{season_type}{Season type string (e.g., "Regular Season").}
 
 \item{proxy}{Optional proxy string or list for NBA Stats requests.}
+
+\item{...}{Extra arguments passed to collect_raw() and collect_nba_shotchart().}
 }
 \value{
 A list with games, raw_paths, league_dir, and index_path.

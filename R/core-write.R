@@ -65,7 +65,7 @@ write_tables <- function(tables,
       if (!is.data.frame(tbl)) next
       path <- file.path(out_dir, paste0(nm, ".csv"))
       if (isTRUE(skip_existing) && file.exists(path)) next
-      write.csv(tbl, path, row.names = FALSE)
+      utils::write.csv(tbl, path, row.names = FALSE)
     }
   }
 
@@ -189,6 +189,7 @@ write_bundle_rds <- function(table_names, out_dir, bundle_name, skip_existing = 
 #'   replace tables. `"upsert"` is deprecated (alias for `"overwrite"`).
 #' @param bundle Prefer bundled RDS if present.
 #' @param bundle_name Optional bundle name override (without extension).
+#' @param season_type Optional season type subdirectory filter.
 #' @param table_prefix Optional prefix for sqlite table names.
 #' @param debug Emit progress messages.
 #' @return A list of results per source/season with row counts.
@@ -288,7 +289,7 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
               )
               tables <- NULL
             } else {
-              table_paths <- setNames(rep(bundle_path, length(tables)), names(tables))
+              table_paths <- stats::setNames(rep(bundle_path, length(tables)), names(tables))
               # If bundle has empty tables but per-table RDS has data, override the empty table.
               empty_tbls <- names(tables)[vapply(tables, function(x) is.data.frame(x) && nrow(x) == 0, logical(1))]
               if (length(empty_tbls) > 0) {
@@ -323,7 +324,7 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
         rds_paths <- rds_paths[!grepl("_all\\.rds$", rds_paths)]
         tables <- lapply(rds_paths, readRDS)
         names(tables) <- sub("\\.rds$", "", basename(rds_paths))
-        table_paths <- setNames(rds_paths, names(tables))
+        table_paths <- stats::setNames(rds_paths, names(tables))
       }
 
       if (!is.list(tables) || length(tables) == 0) next
@@ -422,6 +423,9 @@ write_sqlite_from_rds <- function(root_dir = "data/parsed",
 #' @param validate Validate tables after parsing.
 #' @param keep_tables Keep parsed tables in the return list.
 #' @param bundle Write bundled RDS after per-table writes.
+#' @param debug Emit debug logging for each season/source.
+#' @param log_path Optional CSV path to append run metadata.
+#' @param season_type Optional season type (e.g., "regular", "playoffs").
 #' @param ... Extra arguments passed to collect_raw() and parse_raw().
 #' @return A list of season results with row counts and any errors.
 #' @export

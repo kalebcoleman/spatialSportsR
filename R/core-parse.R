@@ -93,7 +93,7 @@ parse_raw <- function(league,
 
   core_names <- c("games", "events", "teams", "manifest")
   all_names <- unique(c(core_names, unlist(lapply(parsed, names))))
-  out <- setNames(vector("list", length(all_names)), all_names)
+  out <- stats::setNames(vector("list", length(all_names)), all_names)
 
   for (nm in all_names) {
     out[[nm]] <- bind_or_empty(parsed, nm)

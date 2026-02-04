@@ -58,6 +58,12 @@ replace tables. \code{"upsert"} is deprecated (alias for \code{"overwrite"}).}
 
 \item{bundle}{Write bundled RDS after per-table writes.}
 
+\item{debug}{Emit debug logging for each season/source.}
+
+\item{log_path}{Optional CSV path to append run metadata.}
+
+\item{season_type}{Optional season type (e.g., "regular", "playoffs").}
+
 \item{...}{Extra arguments passed to collect_raw() and parse_raw().}
 }
 \value{

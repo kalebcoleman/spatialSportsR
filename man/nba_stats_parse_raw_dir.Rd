@@ -10,6 +10,8 @@ nba_stats_parse_raw_dir(season, raw_dir, season_type = "Regular Season")
 \item{season}{Season identifier.}
 
 \item{raw_dir}{Directory containing raw NBA Stats files.}
+
+\item{season_type}{Season type string (e.g., "Regular Season", "Playoffs").}
 }
 \value{
 A named list of tables including games, box score tables, pbp, and shots.

@@ -36,6 +36,8 @@ replace tables. \code{"upsert"} is deprecated (alias for \code{"overwrite"}).}
 
 \item{bundle_name}{Optional bundle name override (without extension).}
 
+\item{season_type}{Optional season type subdirectory filter.}
+
 \item{table_prefix}{Optional prefix for sqlite table names.}
 
 \item{debug}{Emit progress messages.}

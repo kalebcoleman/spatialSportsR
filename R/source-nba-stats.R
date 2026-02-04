@@ -52,8 +52,9 @@ source_nba_stats <- function() {
 #' @param quiet Suppress progress messages.
 #' @param season_type Season type string (e.g., "Regular Season").
 #' @param proxy Optional proxy string or list for NBA Stats requests.
+#' @param ... Extra arguments passed to collect_raw() and collect_nba_shotchart().
 #' @return A list with games, raw_paths, league_dir, and index_path.
-#'
+#' 
 #' @export
 nba_stats_collect_season <- function(season,
                                     raw_dir = "data/raw",
@@ -469,8 +470,9 @@ nba_stats_parse_shots <- function(json, season = NA_character_, game_id = NULL) 
 #'
 #' @param season Season identifier.
 #' @param raw_dir Directory containing raw NBA Stats files.
+#' @param season_type Season type string (e.g., "Regular Season", "Playoffs").
 #' @return A named list of tables including games, box score tables, pbp, and shots.
-#'
+#' 
 #' @export
 nba_stats_parse_raw_dir <- function(season, raw_dir, season_type = "Regular Season") {
   if (!dir.exists(raw_dir)) {
