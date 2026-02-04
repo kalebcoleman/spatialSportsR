@@ -11,6 +11,21 @@ Here are examples of shot density hexbin plots that can be generated:
 ### Dark Theme
 ![Shot Density Hexbin Plot (Dark Theme)](analysis/shot_density_hexbin_2025-26_dark.png)
 
+## Streamlit Dashboard
+
+Run the interactive shot density dashboard:
+
+```bash
+python -m pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+Optional database override:
+
+```bash
+export SPATIALSPORTSR_DB_PATH="path/to/nba.sqlite"
+```
+
 
 
 
