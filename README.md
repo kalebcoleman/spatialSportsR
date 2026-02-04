@@ -17,7 +17,7 @@ Run the interactive shot density dashboard:
 
 ```bash
 python -m pip install -r requirements.txt
-streamlit run streamlit_app.py
+streamlit run app/streamlit_app.py
 ```
 
 Optional database override:
