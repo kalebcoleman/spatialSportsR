@@ -3,7 +3,7 @@
 ^app$
 ^data$
 ^logs$
-^\\.github$
+^\\.github($|/)
 ^\\.\\.?Rcheck$
 ^\.venv$
 ^\.skillenv$
