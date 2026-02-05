@@ -11,7 +11,9 @@ devtools::test()
 
 # Python analysis
 python analysis/expected_points_analysis.py  # Train xFG model
-python analysis/advanced_analytics.py        # Run all analytics
+python analysis/advanced_analytics.py        # Residuals, SDI, Clusters
+python analysis/salary_collector.py          # Fetch 467 player salaries
+python analysis/value_analysis.py            # POE per $1M rankings
 ```
 
 ## Features
@@ -22,28 +24,29 @@ python analysis/advanced_analytics.py        # Run all analytics
 - Features: location, distance, shot type, zone, game clock
 
 ### Advanced Analytics
-1. **Residual Analysis** - Who over/underperforms expectations?
-2. **Shot Difficulty Index (SDI)** - How hard are their shots?
+1. **Residual Analysis** - Over/underperformance vs expectations
+2. **Shot Difficulty Index (SDI)** - Quantifies shot complexity
 3. **Player Archetypes** - K-means clustering into play styles
+4. **Value Analysis** - POE per $1M salary
 
 ## Key Findings
 
-| Player | Residual | Insight |
-|--------|----------|---------|
-| Nikola Jokić | +12.9% | Top overperformer |
-| Luke Kennard | +12.6% | Shot-making god |
-| SGA | +8.9% | Elite efficiency |
+| Player | Residual | POE/$M |
+|--------|----------|--------|
+| Nikola Jokić | +12.9% | +2.67 |
+| SGA | +8.9% | +4.32 |
+| Stephen Curry | +6.5% | +1.77 |
 
 ### Archetypes
-- **Rim Pressure Slasher**: Gobert, Ayton, Mark Williams
-- **Off-Dribble Shooter**: Kennard, Bridges, Hachimura
-- **Balanced Scorer**: Jokić, Holmgren, Johnson
+- **Rim Pressure Slasher**: Gobert, Ayton
+- **Off-Dribble Shooter**: Kennard, Bridges
+- **Balanced Scorer**: Jokić, Holmgren
 
 ## Data
 
 - SQLite: `data/parsed/nba.sqlite`
 - 124k+ shots from 2025-26 season
-- Full R pipeline: collect → parse → validate → write
+- 467 player salaries from Basketball-Reference
 
 ## Structure
 
@@ -53,18 +56,9 @@ spatialSportsR/
 ├── analysis/           # Python scripts
 │   ├── expected_points_analysis.py
 │   ├── advanced_analytics.py
+│   ├── salary_collector.py
+│   ├── value_analysis.py
 │   └── outputs/
 ├── data/parsed/        # SQLite database
 └── tests/              # R unit tests
-```
-
-## Installation
-
-```r
-install.packages(c("devtools", "renv"))
-devtools::load_all()
-```
-
-```bash
-pip install -r requirements.txt
 ```

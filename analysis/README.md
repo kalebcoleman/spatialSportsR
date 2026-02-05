@@ -2,48 +2,54 @@
 
 Python scripts for NBA shot prediction and advanced analytics.
 
-## Files
+## Folder Structure
 
-| File | Description |
-|------|-------------|
-| `court_utils.py` | Shared court drawing utilities |
-| `expected_points_analysis.py` | xFG model training and POE calculation |
-| `player_performance_analysis.py` | Player-level POE rankings |
-| `shot_density.py` | Full-court hexbin density heatmaps |
-| `advanced_analytics.py` | **NEW** Residuals, SDI, Clustering |
+```
+analysis/
+├── data/           # Parsed data and CSV outputs
+├── figures/        # Generated plots, heatmaps, and PDPs
+├── models/         # Trained models (.joblib, .pkl)
+├── reports/        # Rmarkdown reports
+├── utils/          # Helper modules
+│   └── court_utils.py
+├── expected_points_analysis.py   # Logistic Regression xFG model
+├── gam_analysis.py               # GAM model with partial dependence plots
+├── advanced_analytics.py         # Residuals, SDI, Clustering
+├── player_performance_analysis.py
+├── shot_density.py
+├── salary_collector.py
+└── value_analysis.py
+```
 
 ## Quick Start
 
 ```bash
-python expected_points_analysis.py    # Train xFG model
-python advanced_analytics.py          # Run all 3 advanced analytics
+python analysis/expected_points_analysis.py  # Train xFG model (Logistic Regression)
+python analysis/gam_analysis.py              # Train GAM model + generate PDPs
+python analysis/advanced_analytics.py        # Residuals, SDI, Clusters
+python analysis/salary_collector.py          # Fetch salaries
+python analysis/value_analysis.py            # Value rankings
 ```
 
-## Advanced Analytics
+## Models
 
-### 1. Residual Analysis
-- Compute: `actual - expected` per shot
-- Top overperformer: Nikola Jokić (+12.9%)
-- Output: `player_residuals.csv`, residual heatmaps
+| Model | Type | Accuracy | AUC-ROC |
+|-------|------|----------|---------|
+| xFG (Logistic Regression) | `sklearn` | 62.9% | 0.653 |
+| GAM (PyGAM) | `pygam` | 62.9% | **0.655** |
 
-### 2. Shot Difficulty Index (SDI)
-```
-SDI = 0.30×distance + 0.20×clock + 0.20×type + 0.15×zone + 0.15×angle
-```
-- Higher = harder shot
-- Output: `sdi_vs_xfg_scatter.png`
+## Key Metrics
 
-### 3. Player Archetypes
-- K-Means clustering on shot profile features
-- Archetypes: Rim Pressure Slasher, Off-Dribble Shooter, Balanced Scorer
-- Output: `player_clusters.csv`, `player_archetypes_scatter.png`
+- **xFG**: Expected FG% from model
+- **POE**: Points Over Expected
+- **SDI**: Shot Difficulty Index
+- **POE/$M**: Value efficiency (POE per $1M salary)
 
-## Model Performance
+## GAM Partial Dependence Plots
 
-| Model | Accuracy | AUC-ROC |
-|-------|----------|---------|
-| Logistic Regression | 62.9% | 0.653 |
+The GAM model generates interpretable visualizations showing how each feature affects shot probability:
 
-## Outputs → `outputs/`
-
-All visualizations and data files saved automatically.
+- `gam_effect_distance.png` - Rim shots easiest, mid-range hardest
+- `gam_effect_angle.png` - Corner 3s easier than straight-on
+- `gam_effect_period.png` - Shooting drops off in OT (fatigue)
+- `gam_spatial_probability.png` - Court heatmap of make probability

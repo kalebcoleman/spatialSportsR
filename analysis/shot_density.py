@@ -19,6 +19,8 @@ from matplotlib.patches import Arc, Circle, Rectangle
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB_PATH = REPO_ROOT / "data" / "parsed" / "nba.sqlite"
 DB_PATH = Path(os.getenv("SPATIALSPORTSR_DB_PATH", str(DEFAULT_DB_PATH))).expanduser()
+ANALYSIS_DIR = Path(__file__).parent
+FIGURES_DIR = ANALYSIS_DIR / "figures"
 
 
 def normalize_season_type(season_type):
@@ -593,10 +595,11 @@ def generate_shot_chart(
     plt.close(fig) # Close the figure to free memory
 
 if __name__ == "__main__":
-    from pathlib import Path
-    ANALYSIS_DIR = Path(__file__).parent
-    OUTPUT_DIR = ANALYSIS_DIR / "outputs"
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    FIGURES_DIR.mkdir(exist_ok=True)
+    if not DB_PATH.exists():
+        raise FileNotFoundError(
+            f"SQLite database not found at {DB_PATH}. Set SPATIALSPORTSR_DB_PATH to override."
+        )
     
     current_season = "2025-26"
     current_season_type = "regular"
@@ -610,7 +613,7 @@ if __name__ == "__main__":
         court_line_color="white",
         font_color="white",
         stat_label_color="white",
-        output_filename=str(OUTPUT_DIR / f"shot_density_hexbin_{current_season}_dark.png"),
+        output_filename=str(FIGURES_DIR / f"shot_density_hexbin_{current_season}_dark.png"),
         title_text="Shot Density Heatmap Analysis",
         subtitle_text="2025-2026 NBA Regular Season",
         author_name_text="Kaleb Coleman",
@@ -628,7 +631,7 @@ if __name__ == "__main__":
         court_line_color="black",
         font_color="black",
         stat_label_color="gray",
-        output_filename=str(OUTPUT_DIR / f"shot_density_hexbin_{current_season}_light.png"),
+        output_filename=str(FIGURES_DIR / f"shot_density_hexbin_{current_season}_light.png"),
         title_text="Shot Density Heatmap Analysis",
         subtitle_text="2025-2026 NBA Regular Season",
         author_name_text="Kaleb Coleman",

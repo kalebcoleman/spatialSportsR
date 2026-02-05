@@ -15,6 +15,7 @@ Accuracy: ~63% (near ceiling without defender tracking data)
 """
 
 import os
+import sys
 import sqlite3
 from pathlib import Path
 
@@ -29,13 +30,27 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, roc_auc_score, log_loss, accuracy_score
 
-from court_utils import draw_half_court, setup_shot_chart_axes
+# Add analysis directory to path to allow imports if run from root
+ANALYSIS_DIR = Path(__file__).parent
+sys.path.append(str(ANALYSIS_DIR))
+
+# Import from utils
+from utils.court_utils import draw_half_court, setup_shot_chart_axes
 
 
 # Configuration
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB_PATH = REPO_ROOT / "data" / "parsed" / "nba.sqlite"
 DB_PATH = Path(os.getenv("SPATIALSPORTSR_DB_PATH", str(DEFAULT_DB_PATH))).expanduser()
+
+# Directories
+MODEL_DIR = ANALYSIS_DIR / "models"
+DATA_DIR = ANALYSIS_DIR / "data"
+FIGURES_DIR = ANALYSIS_DIR / "figures"
+
+# Create directories if they don't exist
+for d in [MODEL_DIR, DATA_DIR, FIGURES_DIR]:
+    d.mkdir(exist_ok=True)
 
 
 def load_shot_data(season, season_type="regular"):
@@ -47,7 +62,7 @@ def load_shot_data(season, season_type="regular"):
         LOC_X, LOC_Y, SHOT_MADE_FLAG, SHOT_TYPE, ACTION_TYPE,
         SHOT_ZONE_BASIC, SHOT_ZONE_AREA, SHOT_DISTANCE,
         PERIOD, MINUTES_REMAINING, SECONDS_REMAINING,
-        PLAYER_NAME, GAME_ID
+        PLAYER_ID, PLAYER_NAME, GAME_ID
     FROM nba_stats_shots
     WHERE season = ? AND season_type = ? AND SHOT_ATTEMPTED_FLAG = 1
     """
@@ -172,8 +187,11 @@ def generate_visualizations(df, season, output_dir):
 if __name__ == "__main__":
     SEASON = '2025-26'
     SEASON_TYPE = 'regular'
-    OUTPUT_DIR = Path(__file__).parent / "outputs"
-    OUTPUT_DIR.mkdir(exist_ok=True)
+
+    if not DB_PATH.exists():
+        raise FileNotFoundError(
+            f"SQLite database not found at {DB_PATH}. Set SPATIALSPORTSR_DB_PATH to override."
+        )
     
     # Load and prepare data
     print(f"Loading {SEASON} {SEASON_TYPE} season...")
@@ -182,10 +200,13 @@ if __name__ == "__main__":
     
     shots_df = engineer_features(shots_df)
     print(f"After cleaning: {len(shots_df):,} shots")
+
+    if shots_df.empty:
+        raise SystemExit("No shots available after cleaning. Check season/season_type and data source.")
     
     # Generate visualizations
     print("\nGenerating visualizations...")
-    generate_visualizations(shots_df, SEASON, OUTPUT_DIR)
+    generate_visualizations(shots_df, SEASON, FIGURES_DIR)
     
     # Prepare features
     feature_cols = [
@@ -220,7 +241,7 @@ if __name__ == "__main__":
     print(classification_report(y_test, y_pred))
     
     # Save model
-    model_path = OUTPUT_DIR / f'xp_model_{SEASON}.joblib'
+    model_path = MODEL_DIR / f'xp_model_{SEASON}.joblib'
     joblib.dump(model, model_path)
     print(f"Model saved to: {model_path}")
     
@@ -232,7 +253,7 @@ if __name__ == "__main__":
     shots_df['POE'] = shots_df['actual_points'] - shots_df['xP_value']
     
     # Save enriched data
-    output_path = OUTPUT_DIR / f'shots_with_xp_{SEASON}.parquet'
+    output_path = DATA_DIR / f'shots_with_xp_{SEASON}.parquet'
     shots_df.to_parquet(output_path)
     print(f"Saved: {output_path}")
     

@@ -10,6 +10,8 @@ Uses pre-computed xP_prob from expected_points_analysis.py
 """
 
 import os
+import sys
+import sqlite3
 from pathlib import Path
 
 import numpy as np
@@ -19,18 +21,85 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
-from court_utils import draw_half_court, setup_shot_chart_axes
+# Add analysis directory to path to allow imports if run from root
+ANALYSIS_DIR = Path(__file__).parent
+sys.path.append(str(ANALYSIS_DIR))
+
+# Import from utils
+from utils.court_utils import draw_half_court, setup_shot_chart_axes
 
 
 # Configuration
-ANALYSIS_DIR = Path(__file__).parent
-OUTPUT_DIR = ANALYSIS_DIR / "outputs"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DB_PATH = REPO_ROOT / "data" / "parsed" / "nba.sqlite"
+DB_PATH = Path(os.getenv("SPATIALSPORTSR_DB_PATH", str(DEFAULT_DB_PATH))).expanduser()
+DATA_DIR = ANALYSIS_DIR / "data"
+FIGURES_DIR = ANALYSIS_DIR / "figures"
 MIN_SHOTS = 200  # Minimum shots for player analysis
 
 
 # =============================================================================
 # PHASE 1: Shot Quality (Residual Analysis)
 # =============================================================================
+
+def _parse_minutes(value):
+    """Parse minutes string like '32:15' into float minutes."""
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if not text:
+        return 0.0
+    if ":" in text:
+        parts = text.split(":")
+        try:
+            mins = int(parts[0])
+            secs = int(parts[1]) if len(parts) > 1 else 0
+            return mins + (secs / 60.0)
+        except ValueError:
+            return 0.0
+    try:
+        return float(text)
+    except ValueError:
+        return 0.0
+
+
+def load_usage_from_sqlite(season, season_type):
+    """Load minutes-weighted usage% from NBA Stats usage table."""
+    if not DB_PATH.exists():
+        print(f"Warning: SQLite DB not found at {DB_PATH}; usage% will be missing.")
+        return pd.DataFrame(columns=["player_id", "usage_pct"])
+
+    season_type = str(season_type).strip().lower()
+    query = """
+    SELECT player_id, minutes, usagePercentage
+    FROM nba_stats_player_box_usage
+    WHERE season = ? AND season_type = ? AND usagePercentage IS NOT NULL
+    """
+
+    with sqlite3.connect(str(DB_PATH)) as con:
+        df = pd.read_sql_query(query, con, params=[season, season_type])
+
+    if df.empty:
+        print("Warning: No usage% rows found; usage% will be missing.")
+        return pd.DataFrame(columns=["player_id", "usage_pct"])
+
+    df["usagePercentage"] = pd.to_numeric(df["usagePercentage"], errors="coerce")
+    df["minutes_num"] = df["minutes"].apply(_parse_minutes)
+    df = df[df["usagePercentage"].notna()].copy()
+
+    if df.empty:
+        return pd.DataFrame(columns=["player_id", "usage_pct"])
+
+    def weighted_usage(group):
+        minutes = group["minutes_num"].sum()
+        if minutes > 0:
+            return (group["usagePercentage"] * group["minutes_num"]).sum() / minutes
+        return group["usagePercentage"].mean()
+
+    usage = df.groupby("player_id").apply(weighted_usage).reset_index(name="usage_pct")
+    return usage
 
 def compute_residuals(df):
     """
@@ -243,7 +312,7 @@ def plot_sdi_vs_xfg(player_sdi, output_path):
 # PHASE 3: Player Shot Archetype Clustering
 # =============================================================================
 
-def build_player_features(df, min_shots=MIN_SHOTS):
+def build_player_features(df, usage_df=None, min_shots=MIN_SHOTS):
     """
     Build player-level feature matrix for clustering.
     
@@ -253,32 +322,51 @@ def build_player_features(df, min_shots=MIN_SHOTS):
     - Pull-up rate
     - Avg xFG
     - Avg SDI
+    - Usage% (minutes-weighted when available)
+    - Attempts per game (usage proxy)
     """
+    if "PLAYER_ID" not in df.columns:
+        raise ValueError("shots data missing PLAYER_ID; re-run expected_points_analysis.py")
+
     # Filter players with enough shots
-    player_counts = df.groupby('PLAYER_NAME').size()
+    player_counts = df.groupby('PLAYER_ID').size()
     valid_players = player_counts[player_counts >= min_shots].index
-    df = df[df['PLAYER_NAME'].isin(valid_players)]
-    
+    df = df[df['PLAYER_ID'].isin(valid_players)].copy()
+
+    # Volume / usage proxy
+    volume = df.groupby('PLAYER_ID').agg(
+        total_attempts=('SHOT_MADE_FLAG', 'size'),
+        games_played=('GAME_ID', 'nunique')
+    ).reset_index()
+    volume['attempts_per_game'] = volume['total_attempts'] / volume['games_played'].replace(0, np.nan)
+    volume['attempts_per_game'] = volume['attempts_per_game'].fillna(0)
+
     # Zone percentages (pivot)
-    zone_pcts = df.groupby(['PLAYER_NAME', 'SHOT_ZONE_BASIC']).size().unstack(fill_value=0)
+    zone_pcts = df.groupby(['PLAYER_ID', 'SHOT_ZONE_BASIC']).size().unstack(fill_value=0)
     zone_pcts = zone_pcts.div(zone_pcts.sum(axis=1), axis=0)
     zone_pcts.columns = [f'pct_{col.replace(" ", "_").lower()}' for col in zone_pcts.columns]
-    
+
     # Other player-level stats
-    player_stats = df.groupby('PLAYER_NAME').agg({
-        'shot_distance_feet': 'mean',
-        'xP_prob': 'mean',
-        'SDI': 'mean',
-        'SHOT_MADE_FLAG': 'mean',
-        'is_jump_shot': 'mean',  # proxy for pull-up rate
-    }).reset_index()
-    
-    player_stats.columns = ['player', 'avg_distance', 'avg_xFG', 'avg_sdi', 'actual_fg_pct', 'pullup_rate']
-    
+    player_stats = df.groupby('PLAYER_ID').agg(
+        player=('PLAYER_NAME', 'first'),
+        avg_distance=('shot_distance_feet', 'mean'),
+        avg_xFG=('xP_prob', 'mean'),
+        avg_sdi=('SDI', 'mean'),
+        actual_fg_pct=('SHOT_MADE_FLAG', 'mean'),
+        pullup_rate=('is_jump_shot', 'mean')
+    ).reset_index()
+
     # Merge
-    features = player_stats.merge(zone_pcts.reset_index(), left_on='player', right_on='PLAYER_NAME')
-    features = features.drop(columns=['PLAYER_NAME'], errors='ignore')
-    
+    features = player_stats.merge(zone_pcts.reset_index(), on='PLAYER_ID', how='left')
+    features = features.merge(volume, on='PLAYER_ID', how='left')
+
+    if usage_df is not None and not usage_df.empty:
+        usage_df = usage_df.copy()
+        usage_df['player_id'] = usage_df['player_id'].astype(str)
+        features['PLAYER_ID'] = features['PLAYER_ID'].astype(str)
+        features = features.merge(usage_df, left_on='PLAYER_ID', right_on='player_id', how='left')
+        features = features.drop(columns=['player_id'], errors='ignore')
+
     return features
 
 
@@ -289,7 +377,15 @@ def cluster_players(features, n_clusters=5):
     Returns features DataFrame with cluster labels added.
     """
     # Select numeric features for clustering
-    feature_cols = [c for c in features.columns if c not in ['player']]
+    exclude_cols = {
+        'player',
+        'PLAYER_ID',
+        'usage_pct',
+        'attempts_per_game',
+        'total_attempts',
+        'games_played'
+    }
+    feature_cols = [c for c in features.columns if c not in exclude_cols]
     X = features[feature_cols].fillna(0).values
     
     # Standardize
@@ -314,6 +410,22 @@ def label_clusters(features):
     Assign interpretable basketball labels to clusters based on characteristics.
     """
     cluster_labels = {}
+
+    usage_series = None
+    if "usage_pct" in features.columns and not features["usage_pct"].isna().all():
+        usage_series = features["usage_pct"]
+    elif "attempts_per_game" in features.columns:
+        usage_series = features["attempts_per_game"]
+
+    if usage_series is not None:
+        usage_series = usage_series.fillna(usage_series.median())
+        low_usage = usage_series.quantile(0.25)
+        high_usage = usage_series.quantile(0.75)
+    else:
+        low_usage = None
+        high_usage = None
+
+    sdi_cut = features["avg_sdi"].median()
     
     for cluster_id in features['cluster'].unique():
         cluster_data = features[features['cluster'] == cluster_id]
@@ -331,20 +443,28 @@ def label_clusters(features):
         ])
         midrange_pct = cluster_data.get('pct_mid-range', pd.Series([0])).mean()
         
-        # Assign label
+        usage_val = None
+        if "usage_pct" in cluster_data.columns:
+            usage_val = cluster_data["usage_pct"].mean()
+        if (usage_val is None or np.isnan(usage_val)) and "attempts_per_game" in cluster_data.columns:
+            usage_val = cluster_data["attempts_per_game"].mean()
+
+        # Assign label (neutral, shot-profile focused)
         if restricted_pct > 0.4:
-            label = "Rim Pressure Slasher"
+            label = "Rim Heavy / Low Distance"
         elif three_pct > 0.5:
-            if avg_sdi > 0.45:
-                label = "Off-Dribble Shooter"
+            if usage_val is not None and low_usage is not None and usage_val <= low_usage:
+                label = "High 3PT / Low Usage"
+            elif avg_sdi >= sdi_cut:
+                label = "High 3PT / High SDI"
             else:
-                label = "Catch-and-Shoot Specialist"
+                label = "High 3PT / Low SDI"
         elif midrange_pct > 0.2:
-            label = "Midrange Maestro"
-        elif avg_sdi > 0.5:
-            label = "Tough Shot Maker"
+            label = "Mid-Range Heavy"
+        elif avg_sdi >= sdi_cut:
+            label = "High SDI / Non-3"
         else:
-            label = "Balanced Scorer"
+            label = "Balanced"
         
         cluster_labels[cluster_id] = label
     
@@ -401,13 +521,39 @@ def create_cluster_summary(features, cluster_labels):
 # =============================================================================
 
 if __name__ == "__main__":
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    DATA_DIR.mkdir(exist_ok=True)
+    FIGURES_DIR.mkdir(exist_ok=True)
     
     # Load enriched shot data
     print("Loading enriched shot data...")
-    shots_path = OUTPUT_DIR / "shots_with_xp_2025-26.parquet"
+    current_season = "2025-26"
+    current_season_type = "regular"
+    shots_path = DATA_DIR / f"shots_with_xp_{current_season}.parquet"
+    if not shots_path.exists():
+        raise FileNotFoundError(
+            f"Missing {shots_path}. Run expected_points_analysis.py first."
+        )
     df = pd.read_parquet(shots_path)
     print(f"Loaded {len(df):,} shots")
+
+    usage_df = load_usage_from_sqlite(current_season, current_season_type)
+
+    required_cols = {
+        'PLAYER_NAME',
+        'SHOT_MADE_FLAG',
+        'SHOT_ZONE_BASIC',
+        'ACTION_TYPE',
+        'xP_prob',
+        'shot_distance_feet',
+        'seconds_in_period',
+        'shot_angle',
+        'is_jump_shot',
+    }
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"shots_with_xp file missing required columns: {', '.join(sorted(missing))}"
+        )
     
     # =========================================================================
     # PHASE 1: Residual Analysis
@@ -434,11 +580,11 @@ if __name__ == "__main__":
     
     # Heatmap for top overperformer
     top_player = player_residuals.iloc[0]['player']
-    plot_residual_heatmap(df, top_player, OUTPUT_DIR / f"{top_player.replace(' ', '_')}_residual_heatmap.png")
+    plot_residual_heatmap(df, top_player, FIGURES_DIR / f"{top_player.replace(' ', '_')}_residual_heatmap.png")
     
     # Save residuals
-    player_residuals.to_csv(OUTPUT_DIR / "player_residuals.csv", index=False)
-    print(f"Saved: {OUTPUT_DIR / 'player_residuals.csv'}")
+    player_residuals.to_csv(DATA_DIR / "player_residuals.csv", index=False)
+    print(f"Saved: {DATA_DIR / 'player_residuals.csv'}")
     
     # =========================================================================
     # PHASE 2: Shot Difficulty Index
@@ -455,7 +601,7 @@ if __name__ == "__main__":
     print(player_sdi.head(15)[['player', 'avg_sdi', 'avg_xFG', 'actual_fg_pct', 'attempts']].to_string(index=False))
     
     # SDI vs xFG plot
-    plot_sdi_vs_xfg(player_sdi, OUTPUT_DIR / "sdi_vs_xfg_scatter.png")
+    plot_sdi_vs_xfg(player_sdi, FIGURES_DIR / "sdi_vs_xfg_scatter.png")
     
     # Identify interesting quadrants
     median_sdi = player_sdi['avg_sdi'].median()
@@ -472,7 +618,7 @@ if __name__ == "__main__":
     print("PHASE 3: PLAYER SHOT ARCHETYPE CLUSTERING)")
     print("="*60)
     
-    features = build_player_features(df)
+    features = build_player_features(df, usage_df=usage_df)
     print(f"Built features for {len(features)} players")
     
     features, kmeans, scaler = cluster_players(features, n_clusters=5)
@@ -488,13 +634,26 @@ if __name__ == "__main__":
         print(f"  {archetype}: {', '.join(players)}")
     
     # Cluster visualization
-    plot_cluster_scatter(features, OUTPUT_DIR / "player_archetypes_scatter.png")
+    plot_cluster_scatter(features, FIGURES_DIR / "player_archetypes_scatter.png")
     
     # Save cluster assignments
-    features[['player', 'archetype', 'avg_distance', 'avg_xFG', 'avg_sdi', 'actual_fg_pct']].to_csv(
-        OUTPUT_DIR / "player_clusters.csv", index=False
-    )
-    print(f"Saved: {OUTPUT_DIR / 'player_clusters.csv'}")
+    output_cols = [
+        "player",
+        "PLAYER_ID",
+        "archetype",
+        "avg_distance",
+        "avg_xFG",
+        "avg_sdi",
+        "actual_fg_pct",
+        "pullup_rate",
+        "usage_pct",
+        "attempts_per_game",
+        "total_attempts",
+        "games_played"
+    ]
+    output_cols = [c for c in output_cols if c in features.columns]
+    features[output_cols].to_csv(DATA_DIR / "player_clusters.csv", index=False)
+    print(f"Saved: {DATA_DIR / 'player_clusters.csv'}")
     
     # =========================================================================
     # SUMMARY
@@ -502,7 +661,5 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("ANALYSIS COMPLETE")
     print("="*60)
-    print(f"Outputs saved to: {OUTPUT_DIR}")
-    print("Files:")
-    for f in OUTPUT_DIR.glob("*"):
-        print(f"  - {f.name}")
+    print(f"Data saved to: {DATA_DIR}")
+    print(f"Figures saved to: {FIGURES_DIR}")
