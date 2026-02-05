@@ -19,7 +19,10 @@ Imports:
     utils
 Suggests:
     testthat (>= 3.0.0),
+    covr,
+    DT,
     ggplot2,
+    htmltools,
     DBI,
     RSQLite,
     curl,
