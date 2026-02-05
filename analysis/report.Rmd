@@ -4,6 +4,7 @@ author: "Kaleb Coleman"
 output: pdf_document
 header-includes:
   - \usepackage{float}
+bibliography: references.bib
 ---
 
 # Abstract
@@ -45,7 +46,7 @@ suppressPackageStartupMessages({
 
 ## Data Sources and Pipeline
 
-The dataset was compiled through a custom R package interfacing with the official NBA API and ESPN API. Raw JSON data was parsed, cleaned, and stored in a SQLite database (`nba.sqlite`) containing 2.5M+ shots across 12 seasons.
+The dataset was compiled through a custom R package interfacing with the NBA Stats API and ESPN NBA API. Raw JSON data was parsed, cleaned, and stored in a SQLite database (`nba.sqlite`) containing 2.5M+ shots across 12 seasons. [@nbaStatsAPI; @espnAPI]
 
 ## xFG Model
 
