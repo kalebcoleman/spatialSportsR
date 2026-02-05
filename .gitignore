@@ -11,6 +11,9 @@ __pycache__/
 /data/raw/
 /data/parsed/
 
+# NHL data (local only)
+/data/nhl/
+
 # local agent context files
 AGENTS.md
 GEMINI.md
