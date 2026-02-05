@@ -33,11 +33,74 @@ DATA_DIR = ANALYSIS_DIR / "data"
 FIGURES_DIR = ANALYSIS_DIR / "figures"
 MODELS_DIR = ANALYSIS_DIR / "models"
 SEED = 42
-DISTANCE_CAP_FT = 35  # drop extreme heaves to stabilize GAM smooths
+DISTANCE_CAP_FT = 35  # optional cap if enabled for stability
+
+# Rolling window configuration (matches expected_points_analysis.py)
+TARGET_SEASON = '2025-26'
+ROLLING_WINDOW = 5
+
+# Import DB path from expected_points module
+import os
+import sqlite3
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DB_PATH = REPO_ROOT / "data" / "parsed" / "nba.sqlite"
+DB_PATH = Path(os.getenv("SPATIALSPORTSR_DB_PATH", str(DEFAULT_DB_PATH))).expanduser()
 
 
-def load_data():
-    """Load latest shot data."""
+def get_rolling_window_seasons(target_season, window_size=5):
+    """Generate list of training seasons for rolling window."""
+    start_year = int(target_season.split('-')[0])
+    training_seasons = []
+    for i in range(window_size, 0, -1):
+        year = start_year - i
+        season = f"{year}-{str(year + 1)[-2:]}"
+        training_seasons.append(season)
+    return training_seasons
+
+
+def load_shot_data_from_db(seasons, season_type="regular", cap_distance=False, exclude_backcourt=False):
+    """Load shot data directly from SQLite for training."""
+    if isinstance(seasons, str):
+        seasons = [seasons]
+    
+    con = sqlite3.connect(str(DB_PATH))
+    placeholders = ','.join(['?' for _ in seasons])
+    query = f"""
+    SELECT
+        LOC_X, LOC_Y, SHOT_MADE_FLAG, SHOT_TYPE, ACTION_TYPE,
+        SHOT_ZONE_BASIC, SHOT_ZONE_AREA, SHOT_DISTANCE,
+        PERIOD, MINUTES_REMAINING, SECONDS_REMAINING, season
+    FROM nba_stats_shots
+    WHERE season IN ({placeholders}) AND season_type = ? AND SHOT_ATTEMPTED_FLAG = 1
+    """
+    params = seasons + [season_type]
+    df = pd.read_sql_query(query, con, params=params)
+    con.close()
+    
+    # Engineer features inline
+    for col in ['LOC_X', 'LOC_Y', 'SHOT_MADE_FLAG', 'SHOT_DISTANCE', 
+                'PERIOD', 'MINUTES_REMAINING', 'SECONDS_REMAINING']:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    df.dropna(subset=['LOC_X', 'LOC_Y', 'SHOT_MADE_FLAG', 'ACTION_TYPE'], inplace=True)
+    df['shot_distance_feet'] = df['SHOT_DISTANCE'].fillna(
+        np.sqrt(df['LOC_X']**2 + df['LOC_Y']**2) / 10
+    )
+    df['shot_angle'] = np.arctan2(df['LOC_X'], df['LOC_Y'].clip(lower=1))
+    df['seconds_in_period'] = df['MINUTES_REMAINING'].fillna(0) * 60 + df['SECONDS_REMAINING'].fillna(0)
+    df['is_clutch'] = ((df['PERIOD'] >= 4) & (df['seconds_in_period'] <= 120)).astype(int)
+    
+    # Optional filters
+    if cap_distance:
+        df = df[df['shot_distance_feet'].between(0, DISTANCE_CAP_FT)].copy()
+    if exclude_backcourt:
+        df = df[df['SHOT_ZONE_BASIC'].ne('Backcourt')].copy()
+    
+    return df
+
+
+def load_data(cap_distance=True, exclude_backcourt=True):
+    """Load latest shot data (target season with enriched xP)."""
     files = list(DATA_DIR.glob("shots_with_xp_*.parquet"))
     if not files:
         raise FileNotFoundError("No shot data found in analysis/data/")
@@ -45,9 +108,9 @@ def load_data():
     print(f"Loading {latest_file.name}...")
     season = latest_file.stem.replace("shots_with_xp_", "")
     df = pd.read_parquet(latest_file)
-    if "shot_distance_feet" in df.columns:
+    if cap_distance and "shot_distance_feet" in df.columns:
         df = df[df["shot_distance_feet"].between(0, DISTANCE_CAP_FT)].copy()
-    if "SHOT_ZONE_BASIC" in df.columns:
+    if exclude_backcourt and "SHOT_ZONE_BASIC" in df.columns:
         df = df[df["SHOT_ZONE_BASIC"].ne("Backcourt")].copy()
     return df, season
 
@@ -135,35 +198,54 @@ def fit_gam(X_train, y_train):
     return gam
 
 
-def plot_distance_effect(gam, output_dir, dist_max=DISTANCE_CAP_FT):
-    """Plot how shot probability changes with distance."""
+def plot_distance_effect(gam, output_dir, target_df_all=None, obs_max=None):
+    """Plot GAM distance effect (log-odds)."""
     fig, ax = plt.subplots(figsize=(10, 6))
-    
+
     XX = gam.generate_X_grid(term=1)
     pdp = gam.partial_dependence(term=1, X=XX)
-    conf = gam.partial_dependence(term=1, X=XX, width=.95)[1]
-    
-    mask = (XX[:, 2] >= 0) & (XX[:, 2] <= dist_max)
-    ax.plot(XX[mask, 2], pdp[mask], 'b-', linewidth=2, label='GAM smooth')
-    ax.fill_between(XX[mask, 2], conf[mask, 0], conf[mask, 1], alpha=0.2, color='blue', label='95% CI')
-    
-    # Add reference lines
-    ax.axhline(0, color='gray', linestyle='--', alpha=0.5)
-    ax.axvline(23.75, color='orange', linestyle='--', alpha=0.7, label='3PT Line')
-    ax.axvline(4, color='green', linestyle='--', alpha=0.7, label='Restricted Area')
-    
-    ax.set_xlabel('Shot Distance (feet)', fontsize=12)
-    ax.set_ylabel('Log Odds Contribution', fontsize=12)
-    ax.set_title('Effect of Shot Distance on Make Probability', fontsize=14)
-    ax.legend()
+    conf = gam.partial_dependence(term=1, X=XX, width=0.95)[1]
+
+    if obs_max is None:
+        if target_df_all is not None and "shot_distance_feet" in target_df_all.columns:
+            dist_series = pd.to_numeric(target_df_all["shot_distance_feet"], errors="coerce")
+            obs_max = np.nanmax(dist_series.values)
+        else:
+            obs_max = np.nanmax(XX[:, 2])
+        if not np.isfinite(obs_max):
+            obs_max = np.nanmax(XX[:, 2])
+    obs_max = float(np.ceil(obs_max))
+
+    mask = (XX[:, 2] >= 0) & (XX[:, 2] <= obs_max)
+    ax.plot(
+        XX[mask, 2],
+        pdp[mask],
+        color="#1f77b4",
+        linewidth=2,
+        label="GAM smooth (log-odds)",
+    )
+    ax.fill_between(
+        XX[mask, 2],
+        conf[mask, 0],
+        conf[mask, 1],
+        alpha=0.2,
+        color="#1f77b4",
+        label="95% CI",
+    )
+
+    # Add reference lines (no legend)
+    ax.axhline(0, color="gray", linestyle="--", alpha=0.5, label="_nolegend_")
+    ax.axvline(23.75, color="orange", linestyle="--", alpha=0.7, label="_nolegend_")
+    ax.axvline(4, color="green", linestyle="--", alpha=0.7, label="_nolegend_")
+
+    ax.set_xlabel("Shot Distance (feet)", fontsize=12)
+    ax.set_ylabel("Marginal log-odds contribution (additive term; 0 = baseline)", fontsize=11)
+    ax.set_title("GAM Distance Effect on Shot Success (Marginal Log-Odds; Relative to Baseline)", fontsize=13)
     ax.grid(True, alpha=0.3)
-    ax.set_xlim(0, dist_max)
-    
-    # Add interpretation text
-    ax.text(5, ax.get_ylim()[1]*0.9, 'Rim shots\n(easiest)', fontsize=10, ha='center', color='green')
-    ax.text(15, ax.get_ylim()[0]*0.5, 'Mid-range\n(hardest)', fontsize=10, ha='center', color='red')
-    ax.text(25, ax.get_ylim()[0]*0.3, '3-pointers', fontsize=10, ha='center', color='orange')
-    
+    ax.set_xlim(0, obs_max)
+
+    ax.legend(loc="upper right", fontsize=9)
+
     plt.tight_layout()
     output_path = output_dir / "gam_effect_distance.png"
     plt.savefig(output_path, dpi=200)
@@ -395,15 +477,26 @@ if __name__ == "__main__":
     FIGURES_DIR.mkdir(exist_ok=True)
     
     print("=" * 60)
-    print("GAM ANALYSIS (PyGAM) - ENHANCED")
+    print("GAM ANALYSIS (PyGAM) - ROLLING WINDOW")
     print("=" * 60)
     
-    # 1. Load Data
-    df, season = load_data()
-    print(f"Loaded {len(df):,} shots")
+    # Generate rolling window training seasons
+    training_seasons = get_rolling_window_seasons(TARGET_SEASON, window_size=ROLLING_WINDOW)
+    print(f"Rolling Window Training: {training_seasons}")
+    print(f"Target Season: {TARGET_SEASON}")
+    print("=" * 60)
     
-    # 2. Prepare Data with more features
-    df = add_shot_type_features(df)
+    # 1. Load TRAINING data (5 prior seasons)
+    print(f"\nLoading training data from {training_seasons[0]} to {training_seasons[-1]}...")
+    train_df = load_shot_data_from_db(training_seasons, cap_distance=False, exclude_backcourt=False)
+    train_df = add_shot_type_features(train_df)
+    print(f"Loaded {len(train_df):,} training shots")
+    
+    # 2. Load TARGET data (for visualizations)
+    print(f"\nLoading target season {TARGET_SEASON} for visualizations...")
+    target_df, season = load_data(cap_distance=False, exclude_backcourt=False)
+    target_df = add_shot_type_features(target_df)
+    print(f"Loaded {len(target_df):,} target shots")
 
     feature_cols = [
         'LOC_X', 'LOC_Y', 
@@ -420,41 +513,52 @@ if __name__ == "__main__":
         'is_clutch'
     ]
     
-    df_clean = df.dropna(subset=feature_cols + ['SHOT_MADE_FLAG']).copy()
+    # Prepare training data
+    train_clean = train_df.dropna(subset=feature_cols + ['SHOT_MADE_FLAG']).copy()
+    X_train = train_clean[feature_cols].values
+    y_train = train_clean['SHOT_MADE_FLAG'].values
     
-    X = df_clean[feature_cols].values
-    y = df_clean['SHOT_MADE_FLAG'].values
+    # Prepare target data for evaluation
+    target_clean = target_df.dropna(subset=feature_cols + ['SHOT_MADE_FLAG']).copy()
+    X_target = target_clean[feature_cols].values
+    y_target = target_clean['SHOT_MADE_FLAG'].values
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=SEED)
-    print(f"Training on {len(X_train):,} samples")
+    print(f"\nTrain (prior 5 seasons): {len(X_train):,} | Target (out-of-sample): {len(X_target):,}")
     
-    # 3. Fit GAM
+    # 3. Fit GAM on training data
     gam = fit_gam(X_train, y_train)
     
-    # 4. Evaluate
-    print("\n" + "=" * 40)
-    print("EVALUATION")
-    print("=" * 40)
-    accuracy = gam.accuracy(X_test, y_test)
-    y_pred_proba = gam.predict_proba(X_test)
-    auc_roc = roc_auc_score(y_test, y_pred_proba)
-    logloss = log_loss(y_test, y_pred_proba)
-
-    print(f"Accuracy:  {accuracy:.4f}")
-    print(f"AUC-ROC:   {auc_roc:.4f}")
-    print(f"Log Loss:  {logloss:.4f}")
+    # 4. Evaluate on TARGET season (out-of-sample)
+    print("\n" + "=" * 60)
+    print("EVALUATION (Out-of-Sample)")
+    print(f"Training: {training_seasons[0]} to {training_seasons[-1]}")
+    print(f"Evaluation: {TARGET_SEASON}")
+    print("=" * 60)
     
-    # 5. Generate All Visualizations
+    accuracy = gam.accuracy(X_target, y_target)
+    y_pred_proba = gam.predict_proba(X_target)
+    auc_roc = roc_auc_score(y_target, y_pred_proba)
+    logloss = log_loss(y_target, y_pred_proba)
+    
+    from sklearn.metrics import brier_score_loss
+    brier = brier_score_loss(y_target, y_pred_proba)
+
+    print(f"Accuracy:     {accuracy:.4f}")
+    print(f"AUC-ROC:      {auc_roc:.4f}")
+    print(f"Log Loss:     {logloss:.4f}")
+    print(f"Brier Score:  {brier:.4f}")
+    
+    # 5. Generate All Visualizations (using target season shot distribution)
     print("\n" + "=" * 40)
     print("GENERATING VISUALIZATIONS")
     print("=" * 40)
     
-    plot_distance_effect(gam, FIGURES_DIR)
+    plot_distance_effect(gam, FIGURES_DIR, target_df, obs_max=None)
     plot_angle_effect(gam, FIGURES_DIR)
     plot_clock_effect(gam, FIGURES_DIR)
     plot_period_effect(gam, FIGURES_DIR)
-    plot_shot_type_effects(df_clean, FIGURES_DIR)
-    plot_spatial_tensor(gam, FIGURES_DIR, df_clean)
+    plot_shot_type_effects(target_clean, FIGURES_DIR)
+    plot_spatial_tensor(gam, FIGURES_DIR, target_clean)
     
     # 6. Save Model
     model_path = MODELS_DIR / f"gam_model_{season}.pkl"
@@ -465,16 +569,22 @@ if __name__ == "__main__":
     metrics_path = DATA_DIR / "model_metrics_gam.csv"
     metrics_df = pd.DataFrame([{
         "model": "GAM (PyGAM)",
-        "season": season,
+        "train_seasons": f"{training_seasons[0]} to {training_seasons[-1]}",
+        "eval_season": TARGET_SEASON,
         "season_type": "regular",
         "accuracy": accuracy,
         "auc_roc": auc_roc,
         "log_loss": logloss,
+        "brier_score": brier,
+        "n_train": len(X_train),
+        "n_eval": len(X_target),
         "updated_at": datetime.now().isoformat(timespec="seconds")
     }])
     metrics_df.to_csv(metrics_path, index=False)
     print(f"Saved metrics: {metrics_path}")
     
     print("\n" + "=" * 60)
-    print("COMPLETE - Generated 7 visualization files")
+    print("ANALYSIS COMPLETE")
+    print(f"Model trained on: {len(X_train):,} shots ({training_seasons[0]} to {training_seasons[-1]})")
+    print(f"Evaluated on:     {len(X_target):,} shots ({TARGET_SEASON}) - TRUE OUT-OF-SAMPLE")
     print("=" * 60)

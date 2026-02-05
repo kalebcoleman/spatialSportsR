@@ -5,6 +5,7 @@ Three integrated analytics products using existing xFG model:
 1. Shot Quality (Residual Analysis)
 2. Shot Difficulty Index (SDI)
 3. Player Shot Archetype Clustering
+4. Player Metric Correlation Heatmap
 
 Uses pre-computed xP_prob from expected_points_analysis.py
 """
@@ -17,6 +18,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import unicodedata
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -269,41 +271,159 @@ def aggregate_player_sdi(df, min_shots=MIN_SHOTS):
 
 def plot_sdi_vs_xfg(player_sdi, output_path):
     """
-    Scatter plot: Avg SDI vs Avg xFG per player.
+    Scatter plot: Avg SDI vs Actual FG% per player.
     
     Quadrants:
-    - Top-right: difficult shots, high efficiency (elite scorers)
-    - Bottom-left: easy shots, low efficiency (inefficient)
+    - Top-right: difficult shots, high conversion (elite shot-makers)
+    - Bottom-right: difficult shots, low conversion (volume shooters)
+    - Top-left: easy shots, high conversion (efficient role players)
+    - Bottom-left: easy shots, low conversion (inefficient)
+    
+    Color shows FG% residual (actual - expected) to highlight overperformers.
     """
     fig, ax = plt.subplots(figsize=(12, 10))
     
+    # Compute residual for color coding
+    player_sdi = player_sdi.copy()
+    player_sdi['residual'] = player_sdi['actual_fg_pct'] - player_sdi['avg_xFG']
+    
     scatter = ax.scatter(
         player_sdi['avg_sdi'],
-        player_sdi['avg_xFG'],
+        player_sdi['actual_fg_pct'],  # Y-axis = Actual FG%
         s=player_sdi['attempts'] / 5,  # size by volume
         alpha=0.6,
-        c=player_sdi['actual_fg_pct'],
+        c=player_sdi['residual'],  # Color = Residual (actual - expected)
         cmap='RdYlGn',
+        vmin=-0.10, vmax=0.10,  # Symmetric colorscale around 0
         edgecolors='black', linewidths=0.5
     )
     
     # Add quadrant lines
-    ax.axhline(player_sdi['avg_xFG'].median(), color='gray', linestyle='--', alpha=0.5)
+    ax.axhline(player_sdi['actual_fg_pct'].median(), color='gray', linestyle='--', alpha=0.5)
     ax.axvline(player_sdi['avg_sdi'].median(), color='gray', linestyle='--', alpha=0.5)
     
-    # Label interesting players
-    top_sdi = player_sdi.nlargest(5, 'avg_sdi')
-    for _, row in top_sdi.iterrows():
-        ax.annotate(row['player'], (row['avg_sdi'], row['avg_xFG']), fontsize=8)
+    def _normalize_name(name):
+        if not isinstance(name, str):
+            return ""
+        text = unicodedata.normalize("NFKD", name)
+        text = "".join(ch for ch in text if not unicodedata.combining(ch))
+        return text.lower().replace(".", "").replace(",", "").strip()
+
+    highlight_names = {
+        "giannis antetokounmpo",
+        "shai gilgeous-alexander",
+        "nikola jokic",
+        "nikola jokić",
+    }
+    highlight_names = {_normalize_name(n) for n in highlight_names}
+
+    for _, row in player_sdi.iterrows():
+        if _normalize_name(row["player"]) in highlight_names:
+            ax.annotate(
+                row["player"],
+                (row["avg_sdi"], row["actual_fg_pct"]),
+                fontsize=9,
+                alpha=0.95,
+            )
     
     ax.set_xlabel('Average Shot Difficulty Index (SDI)', fontsize=12)
-    ax.set_ylabel('Average Expected FG% (xFG)', fontsize=12)
-    ax.set_title('Shot Difficulty vs Expected Efficiency\n(Size = Volume, Color = Actual FG%)', fontsize=14)
+    ax.set_ylabel('Actual Field Goal %', fontsize=12)
+    ax.set_title('Shot Difficulty vs Actual Efficiency\n(Size = Volume, Color = FG% Residual)', fontsize=14)
     
     cbar = plt.colorbar(scatter, ax=ax)
-    cbar.set_label('Actual FG%', fontsize=10)
+    cbar.set_label('FG% Residual (Actual - Expected)', fontsize=10)
     
     plt.savefig(output_path, dpi=200, bbox_inches='tight')
+    print(f"Saved: {output_path}")
+    plt.close()
+
+
+def plot_player_correlation(features, output_path, season_label=None):
+    """
+    Correlation heatmap across player-level metrics.
+
+    Includes usage/volume, shot selection mix, and efficiency signals.
+    """
+    corr_cols = [
+        "avg_distance",
+        "avg_xFG",
+        "avg_sdi",
+        "actual_fg_pct",
+        "pullup_rate",
+        "attempts_per_game",
+        "usage_pct",
+        "pct_restricted_area",
+        "pct_mid-range",
+        "pct_above_the_break_3",
+        "pct_left_corner_3",
+        "pct_right_corner_3",
+    ]
+
+    corr_df = features[[c for c in corr_cols if c in features.columns]].copy()
+    if "avg_xFG" in corr_df.columns and "actual_fg_pct" in corr_df.columns:
+        corr_df["residual_fg_pct"] = corr_df["actual_fg_pct"] - corr_df["avg_xFG"]
+
+    if corr_df.empty:
+        print("Skipping correlation plot: no numeric columns available.")
+        return
+
+    corr_df = corr_df.dropna(axis=1, how="all")
+    corr_df = corr_df.loc[:, corr_df.nunique(dropna=True) > 1]
+    if corr_df.shape[1] < 2:
+        print("Skipping correlation plot: not enough signal columns.")
+        return
+
+    corr = corr_df.corr()
+
+    label_map = {
+        "avg_distance": "Avg Distance (ft)",
+        "avg_xFG": "Avg xFG",
+        "avg_sdi": "Avg SDI",
+        "actual_fg_pct": "Actual FG%",
+        "residual_fg_pct": "FG% Residual",
+        "pullup_rate": "Pull-up Rate",
+        "attempts_per_game": "Attempts/Game",
+        "usage_pct": "Usage%",
+        "pct_restricted_area": "Restricted Area",
+        "pct_mid-range": "Mid-Range",
+        "pct_above_the_break_3": "Above Break 3",
+        "pct_left_corner_3": "Left Corner 3",
+        "pct_right_corner_3": "Right Corner 3",
+    }
+    labels = [label_map.get(col, col.replace("_", " ").title()) for col in corr.columns]
+
+    fig, ax = plt.subplots(figsize=(12, 10))
+    im = ax.imshow(corr.values, cmap="coolwarm", vmin=-1, vmax=1)
+
+    ax.set_xticks(np.arange(len(labels)))
+    ax.set_yticks(np.arange(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_yticklabels(labels)
+    ax.tick_params(axis="both", length=0)
+
+    ax.set_xticks(np.arange(len(labels) + 1) - 0.5, minor=True)
+    ax.set_yticks(np.arange(len(labels) + 1) - 0.5, minor=True)
+    ax.grid(which="minor", color="white", linestyle="-", linewidth=1.2)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    for i in range(len(labels)):
+        for j in range(len(labels)):
+            value = corr.values[i, j]
+            if np.isnan(value):
+                continue
+            color = "white" if abs(value) >= 0.5 else "black"
+            ax.text(j, i, f"{value:.2f}", ha="center", va="center", color=color, fontsize=8)
+
+    title = "Player Metric Correlations"
+    if season_label:
+        title = f"{title} ({season_label})"
+    ax.set_title(title, fontsize=14)
+
+    cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Correlation", fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=200, bbox_inches="tight")
     print(f"Saved: {output_path}")
     plt.close()
 
@@ -620,6 +740,13 @@ if __name__ == "__main__":
     
     features = build_player_features(df, usage_df=usage_df)
     print(f"Built features for {len(features)} players")
+
+    # Correlation heatmap
+    plot_player_correlation(
+        features,
+        FIGURES_DIR / "player_metric_correlations.png",
+        season_label=current_season,
+    )
     
     features, kmeans, scaler = cluster_players(features, n_clusters=5)
     features, cluster_labels = label_clusters(features)

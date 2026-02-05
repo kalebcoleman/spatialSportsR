@@ -9,7 +9,7 @@ bibliography: references.bib
 
 # Abstract
 
-This paper presents a reproducible, end-to-end examination of NBA offensive strategy and player performance. We detail a comprehensive shot dataset compiled via a custom data pipeline spanning the 2014-15 through 2025-26 seasons. Using this data, we develop an expected field goal (xFG) model via logistic regression, achieving 63% accuracy with 0.653 AUC-ROC. Building on this foundation, we deliver three advanced analytics products: (1) Residual Analysis to identify players who over/underperform expectations, (2) a Shot Difficulty Index (SDI) quantifying shot complexity, and (3) K-Means clustering to identify player shot archetypes. We then integrate salary data to contextualize performance via POE per $1M and a complementary FG% residual vs salary view that isolates shot-making independent of free throws. Results highlight Nikola Jokić as a top overperformer (+12.9% residual) and surface distinct shot-profile archetypes (e.g., rim-heavy and high‑3PT profiles).
+This paper presents a reproducible, end-to-end examination of NBA offensive strategy and player performance. We detail a comprehensive shot dataset compiled via a custom data pipeline spanning the 2014-15 through 2025-26 seasons. Using this data, we develop an expected field goal (xFG) model via logistic regression, achieving 63% accuracy with 0.653 AUC-ROC. Building on this foundation, we deliver three advanced analytics products: (1) Residual Analysis to identify players who over/underperform expectations, (2) a Shot Difficulty Index (SDI) quantifying shot complexity, and (3) K-Means clustering to identify player shot archetypes. We then integrate salary data to contextualize performance via POE per $1M and a complementary FG% residual vs salary view that isolates shot-making independent of free throws. Results highlight Luke Kennard as a top overperformer (+12.3% residual) and surface distinct shot-profile archetypes (e.g., rim-heavy and high‑3PT profiles).
 
 # Introduction
 
@@ -75,7 +75,14 @@ The expected field goal model uses logistic regression with the following featur
 - **Context**: period, seconds remaining, clutch indicator
 - **Zones**: SHOT_ZONE_BASIC, SHOT_ZONE_AREA (one-hot encoded)
 
-The model was trained on 80% of 2025-26 regular season shots and evaluated on the held-out 20%.
+### Rolling Window Training (True Out-of-Sample)
+
+To eliminate data leakage and provide rigorous out-of-sample evaluation, we employ a **5-season rolling window** training methodology:
+
+- **Training data**: 2020-21 through 2024-25 (5 consecutive seasons, ~1M shots)
+- **Evaluation data**: 2025-26 (current season, true out-of-sample)
+
+This approach captures the **modern 3-point era** shooting patterns while ensuring that all player residuals and POE values are genuine out-of-sample predictions—the model has never seen any 2025-26 shots during training. This is the same methodology a production system would use to predict shot difficulty in real-time.
 
 ## GAM Model (Nonlinear Effects)
 
@@ -127,19 +134,26 @@ metrics_list <- lapply(metrics_files, function(path) {
     NULL
   }
 })
-metrics <- dplyr::bind_rows(metrics_list)
-
-if (nrow(metrics) > 0) {
-  metrics_display <- metrics |>
+  metrics <- dplyr::bind_rows(metrics_list)
+  
+  if (nrow(metrics) > 0) {
+    # Ensure columns exist to handle mixed schemas
+    if (!"train_seasons" %in% names(metrics)) metrics$train_seasons <- NA
+    if (!"eval_season" %in% names(metrics)) metrics$eval_season <- NA
+    if (!"season" %in% names(metrics)) metrics$season <- NA  # Fallback for old schema
+    
+    # Handle both old and new column formats
+    metrics_display <- metrics |>
     transmute(
       Model = model,
-      Season = season,
-      `Season Type` = season_type,
+      `Train Seasons` = if_else(!is.na(train_seasons), train_seasons, as.character(season)),
+      `Eval Season` = if_else(!is.na(eval_season), eval_season, as.character(season)),
       Accuracy = sprintf("%.1f%%", accuracy * 100),
       `AUC-ROC` = sprintf("%.3f", auc_roc),
-      `Log Loss` = sprintf("%.3f", log_loss)
+      `Log Loss` = sprintf("%.3f", log_loss),
+      `Brier Score` = if_else(!is.na(brier_score), sprintf("%.4f", brier_score), "—")
     )
-  kable(metrics_display, caption = "Model Performance (xFG Logistic Regression and GAM)")
+  kable(metrics_display, caption = "Model Performance (Out-of-Sample Evaluation)")
 } else {
   kable(data.frame(Note = "Model metrics files not found. Run analysis scripts to generate metrics."),
         caption = "Model Performance")
@@ -169,6 +183,18 @@ kable(
 )
 ```
 
+## Correlation Matrix
+
+The correlation matrix summarizes relationships across player-level metrics (shot selection, efficiency, and volume) to highlight how shot profile dimensions move together. A clear cluster emerges in the top-left: **average distance, SDI, and pull-up rate are strongly correlated with each other and strongly *negatively* correlated with average xFG**, reflecting the tradeoff between shot difficulty/creation and expected efficiency. This is a descriptive signal of shot-profile structure; if these features are used together in modeling, collinearity should be handled explicitly.
+
+```{r correlation-fig, echo=FALSE, fig.cap="Correlation matrix across player-level metrics for the 2025-26 regular season.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
+knitr::include_graphics("../figures/player_metric_correlations.png")
+```
+Data: Player-level aggregates from shots_with_xp_2025-26.parquet plus usage from nba.sqlite (when available).  
+Filters: Players with >=200 shots; only numeric columns with variance retained for correlation.  
+Exclusions: Low-volume players; columns that are all-NA or constant.  
+Why: Summarize relationships among shot profile, volume, and efficiency metrics to diagnose collinearity.
+
 ## Shot Distribution
 
 The shot chart and distance distribution contextualize league-wide shot selection. As expected in the modern NBA, attempts are concentrated at the rim and beyond the three-point line, while mid-range volume is comparatively low.
@@ -176,10 +202,18 @@ The shot chart and distance distribution contextualize league-wide shot selectio
 ```{r shot-chart-fig, echo=FALSE, fig.cap="Shot distribution for the 2025-26 regular season.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/shot_chart_2025-26.png")
 ```
+Data: 2025-26 regular-season shots from nba_stats_shots (SQLite).  
+Filters: SHOT_ATTEMPTED_FLAG=1; valid LOC_X/LOC_Y and ACTION_TYPE.  
+Exclusions: Shots with missing location/action metadata.  
+Why: Visualize spatial distribution of makes vs misses.
 
 ```{r shot-distance-fig, echo=FALSE, fig.cap="Shot distance distribution for the 2025-26 regular season.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/shot_distance_analysis_2025-26.png")
 ```
+Data: Same 2025-26 regular-season shot sample as the shot chart.  
+Filters: Distances rounded to nearest foot; display limited to <=35 ft.  
+Exclusions: Long heaves beyond 35 ft.  
+Why: Stabilize the distance distribution within typical shooting range.
 
 ## Residual Analysis
 
@@ -192,9 +226,13 @@ kable(
 )
 ```
 
-```{r residual-heatmap-fig, echo=FALSE, fig.cap="Residual heatmap for top overperformer (Jokić).", fig.align="center", out.width="0.85\\linewidth", fig.pos="H"}
-knitr::include_graphics("../figures/Nikola_Jokić_residual_heatmap.png")
+```{r residual-heatmap-fig, echo=FALSE, fig.cap="Residual heatmap for top overperformer (Kennard).", fig.align="center", out.width="0.85\\linewidth", fig.pos="H"}
+knitr::include_graphics("../figures/Luke_Kennard_residual_heatmap.png")
 ```
+Data: shots_with_xp_2025-26.parquet residuals for Luke Kennard (top overperformer).  
+Filters: Player-specific; requires >=50 shots to render heatmap.  
+Exclusions: Players below the shot threshold.  
+Why: Show spatial pockets of over/underperformance vs xFG.
 
 \newpage
 
@@ -203,6 +241,10 @@ knitr::include_graphics("../figures/Nikola_Jokić_residual_heatmap.png")
 ```{r sdi-scatter-fig, echo=FALSE, fig.cap="SDI vs xFG scatter plot. Size indicates volume, color indicates actual FG\\%.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/sdi_vs_xfg_scatter.png")
 ```
+Data: 2025-26 shots with xFG and SDI; player-level averages.  
+Filters: Players with >=200 attempts; point size scaled by volume.  
+Exclusions: Low-volume players.  
+Why: Relate shot difficulty to efficiency and residual performance.
 
 ## Player Archetypes
 
@@ -224,22 +266,35 @@ kable(cluster_summary, digits = 3, caption = "Player Archetype Summary")
 ```{r cluster-scatter-fig, echo=FALSE, fig.cap="PCA visualization of player shot archetypes.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/player_archetypes_scatter.png")
 ```
+Data: Player feature matrix (zone mix, distance, SDI, usage/volume) from 2025-26 shots.  
+Filters: Players with >=200 attempts; PCA for visualization.  
+Exclusions: Low-volume players; missing usage when unavailable.  
+Why: Visualize clustering of shot-profile archetypes.
 
 ## Shot Density
 
 ```{r shot-density-fig, echo=FALSE, fig.cap="League-wide shot density heatmap for the 2025-26 regular season.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/shot_density_hexbin_2025-26_light.png")
 ```
+Data: 2025-26 regular-season shots from nba_stats_shots (SQLite).  
+Filters: SHOT_ATTEMPTED_FLAG=1; full-court hexbin density with log scaling.  
+Exclusions: None beyond missing rows in the source table.  
+Why: Show league-wide shot concentration patterns.
 
 \newpage
 
 ## GAM Partial Dependence
 
-The GAM highlights nonlinear effects that a linear model can only approximate. Distance exhibits a steep decline in make probability beyond the rim and provides an interpretable view of diminishing returns on long-range attempts.
+The GAM highlights nonlinear effects via marginal log-odds contributions. The distance panel focuses on the marginal distance term and its widening uncertainty in the long-distance tail.
 
-```{r gam-distance-fig, echo=FALSE, fig.cap="GAM partial dependence for shot distance.", fig.align="center", out.width="0.85\\linewidth", fig.pos="H"}
+```{r gam-distance-fig, echo=FALSE, fig.cap="GAM distance partial dependence (marginal log-odds). Confidence intervals widen in the long-distance tail due to sparse samples.", fig.align="center", out.width="0.85\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/gam_effect_distance.png")
 ```
+Although the distance smooth can appear flat or slightly negative near the rim, it is a marginal log-odds term relative to the model baseline and other spatial effects. The rim advantage is largely captured by the spatial surface and correlated covariates, so the distance smooth reflects only incremental effects. This does not imply rim shots are difficult: league-wide FG% remains highest at the rim. At very long distances, sample sizes are tiny, so confidence intervals widen substantially and should be interpreted cautiously.
+Data: GAM fit on 2020-21 through 2024-25 regular-season shots (SQLite).  
+Filters: Model uses shots with valid location/clock/action.  
+Exclusions: Rows with missing distance or make flag.  
+Why: Isolate the marginal distance effect on shot success.
 
 \\newpage
 
@@ -250,6 +305,10 @@ Player-level POE shot charts show where individual shot-making exceeds or falls 
 ```{r poe-shotchart-sga, echo=FALSE, fig.cap="Shai Gilgeous-Alexander POE shot chart (2025-26).", fig.align="center", out.width="0.9\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/Shai_Gilgeous-Alexander_poe_shotchart.png")
 ```
+Data: 2025-26 shots_with_xp for Shai Gilgeous-Alexander.  
+Filters: Player-specific; POE colored by make/miss.  
+Exclusions: None beyond missing shot metadata.  
+Why: Show where shot value exceeds or falls short of expectation.
 
 ## Player Value (POE vs Salary)
 
@@ -258,6 +317,10 @@ We combine POE with salary estimates to contextualize performance efficiency. Th
 ```{r poe-salary-fig, echo=FALSE, fig.cap="Player value scatter: POE vs Salary with color encoding POE per $1M.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/poe_vs_salary_scatter.png")
 ```
+Data: player_summary.csv (>=250 attempts) merged with 2024-25 salary data.  
+Filters: Players with salary match; point size by attempts.  
+Exclusions: Players without salary match; salary year lags by one season.  
+Why: Contextualize POE output relative to contract cost.
 
 ## Player Value (FG Residual vs Salary)
 
@@ -266,6 +329,10 @@ POE can be influenced by free throws and usage context. To isolate *pure shot-ma
 ```{r fg-residual-salary-fig, echo=FALSE, fig.cap="Player value scatter: FG% residual vs Salary. Positive values indicate above-expected shot making.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/fg_residual_vs_salary_scatter.png")
 ```
+Data: Same merge as POE vs salary; FG residual = actual FG% - expected.  
+Filters: Players with salary match; point size by attempts.  
+Exclusions: Players without salary match; salary year lags by one season.  
+Why: Isolate pure shot-making efficiency relative to salary.
 
 \newpage
 
@@ -275,7 +342,7 @@ knitr::include_graphics("../figures/fg_residual_vs_salary_scatter.png")
 
 1. **Model Performance**: The logistic regression xFG model achieves 63% accuracy, near the theoretical ceiling without defender tracking data.
 
-2. **Overperformers**: Nikola Jokić leads with +12.9% residual, indicating elite shot-making ability beyond what location and context predict.
+2. **Overperformers**: Luke Kennard leads with +12.3% residual, indicating elite shot-making ability beyond what location and context predict.
 
 3. **Shot Selection**: League-wide charts confirm the rim/three prioritization with suppressed mid-range volume.
 
@@ -302,6 +369,8 @@ knitr::include_graphics("../figures/fg_residual_vs_salary_scatter.png")
 ## Limitations
 
 This study uses league-wide averages and does not account for defensive pressure, which is the primary driver of shot difficulty. The xFG model is limited by the absence of tracking data. Salary data is scraped from a public source and may include reporting lags or contract nuances (current workflow uses 2024-25 salary data). FG residuals focus only on field-goal attempts and therefore do not capture value from free throws or playmaking.
+
+The 5-season rolling window training ensures true out-of-sample evaluation, but assumes that shooting patterns from 2020-21 onward remain stable. Rule changes, court distance modifications, or significant style shifts could introduce distribution drift.
 
 # Conclusion
 
