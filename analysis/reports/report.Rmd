@@ -9,7 +9,7 @@ bibliography: references.bib
 
 # Abstract
 
-This paper presents a reproducible, end-to-end examination of NBA offensive strategy and player performance. We detail a comprehensive shot dataset compiled via a custom data pipeline spanning the 2014-15 through 2025-26 seasons. Using this data, we develop an expected field goal (xFG) model via logistic regression, achieving 63% accuracy with 0.653 AUC-ROC. Building on this foundation, we deliver three advanced analytics products: (1) Residual Analysis to identify players who over/underperform expectations, (2) a Shot Difficulty Index (SDI) quantifying shot complexity, and (3) K-Means clustering to identify player shot archetypes. We then integrate salary data to contextualize performance via POE per $1M. Results highlight Nikola Jokić as a top overperformer (+12.9% residual) and surface distinct shot-profile archetypes (e.g., rim-heavy and high‑3PT profiles).
+This paper presents a reproducible, end-to-end examination of NBA offensive strategy and player performance. We detail a comprehensive shot dataset compiled via a custom data pipeline spanning the 2014-15 through 2025-26 seasons. Using this data, we develop an expected field goal (xFG) model via logistic regression, achieving 63% accuracy with 0.653 AUC-ROC. Building on this foundation, we deliver three advanced analytics products: (1) Residual Analysis to identify players who over/underperform expectations, (2) a Shot Difficulty Index (SDI) quantifying shot complexity, and (3) K-Means clustering to identify player shot archetypes. We then integrate salary data to contextualize performance via POE per $1M and a complementary FG% residual vs salary view that isolates shot-making independent of free throws. Results highlight Nikola Jokić as a top overperformer (+12.9% residual) and surface distinct shot-profile archetypes (e.g., rim-heavy and high‑3PT profiles).
 
 # Introduction
 
@@ -20,8 +20,9 @@ The National Basketball Association (NBA) has undergone a profound data revoluti
 - A reproducible data pipeline consolidating NBA shot data into an analysis-ready SQLite database.
 - An expected field goal (xFG) model using logistic regression with 63% accuracy.
 - Three advanced analytics products: Residual Analysis, Shot Difficulty Index, and Player Archetypes.
-- A salary-adjusted value layer (POE per $1M) for performance context.
+- A salary-adjusted value layer (POE per $1M) plus FG% residual vs salary to separate shot-making from free-throw effects.
 - League-wide shot selection summaries including efficiency metrics and attempt distribution.
+- Nonlinear effect summaries from a GAM model (partial dependence plots) to interpret how context changes shot success.
 
 **Paper Roadmap**
 
@@ -76,6 +77,10 @@ The expected field goal model uses logistic regression with the following featur
 
 The model was trained on 80% of 2025-26 regular season shots and evaluated on the held-out 20%.
 
+## GAM Model (Nonlinear Effects)
+
+We additionally fit a Generalized Additive Model (GAM) to capture nonlinear relationships between shot success and spatial/context features. This model is not used for the main xFG predictions, but it provides interpretable partial dependence plots (PDPs) that clarify how shot probability changes across distance, angle, time, and location.
+
 ## Shot Difficulty Index (SDI)
 
 SDI quantifies shot difficulty using a weighted combination:
@@ -114,11 +119,31 @@ clusters <- read.csv("../data/player_clusters.csv")
 ## xFG Model Performance
 
 ```{r model-metrics}
-model_metrics <- data.frame(
-  Metric = c("Accuracy", "AUC-ROC", "Log Loss"),
-  Value = c("62.9%", "0.653", "0.645")
-)
-kable(model_metrics, caption = "xFG Model Performance (Logistic Regression)")
+metrics_files <- c("../data/model_metrics_xfg.csv", "../data/model_metrics_gam.csv")
+metrics_list <- lapply(metrics_files, function(path) {
+  if (file.exists(path)) {
+    read.csv(path, stringsAsFactors = FALSE)
+  } else {
+    NULL
+  }
+})
+metrics <- dplyr::bind_rows(metrics_list)
+
+if (nrow(metrics) > 0) {
+  metrics_display <- metrics |>
+    transmute(
+      Model = model,
+      Season = season,
+      `Season Type` = season_type,
+      Accuracy = sprintf("%.1f%%", accuracy * 100),
+      `AUC-ROC` = sprintf("%.3f", auc_roc),
+      `Log Loss` = sprintf("%.3f", log_loss)
+    )
+  kable(metrics_display, caption = "Model Performance (xFG Logistic Regression and GAM)")
+} else {
+  kable(data.frame(Note = "Model metrics files not found. Run analysis scripts to generate metrics."),
+        caption = "Model Performance")
+}
 ```
 
 ## Summary Metrics
@@ -208,6 +233,16 @@ knitr::include_graphics("../figures/shot_density_hexbin_2025-26_light.png")
 
 \newpage
 
+## GAM Partial Dependence
+
+The GAM highlights nonlinear effects that a linear model can only approximate. Distance exhibits a steep decline in make probability beyond the rim and provides an interpretable view of diminishing returns on long-range attempts.
+
+```{r gam-distance-fig, echo=FALSE, fig.cap="GAM partial dependence for shot distance.", fig.align="center", out.width="0.85\\linewidth", fig.pos="H"}
+knitr::include_graphics("../figures/gam_effect_distance.png")
+```
+
+\\newpage
+
 ## Player Performance (POE Shot Charts)
 
 Player-level POE shot charts show where individual shot-making exceeds or falls short of model expectations.
@@ -222,6 +257,14 @@ We combine POE with salary estimates to contextualize performance efficiency. Th
 
 ```{r poe-salary-fig, echo=FALSE, fig.cap="Player value scatter: POE vs Salary with color encoding POE per $1M.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/poe_vs_salary_scatter.png")
+```
+
+## Player Value (FG Residual vs Salary)
+
+POE can be influenced by free throws and usage context. To isolate *pure shot-making*, we also plot FG% residual (Actual FG% - Expected FG%) against salary. This view highlights which players beat expected shot quality on their field-goal attempts regardless of foul-drawing.
+
+```{r fg-residual-salary-fig, echo=FALSE, fig.cap="Player value scatter: FG% residual vs Salary. Positive values indicate above-expected shot making.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
+knitr::include_graphics("../figures/fg_residual_vs_salary_scatter.png")
 ```
 
 \newpage
@@ -244,6 +287,8 @@ knitr::include_graphics("../figures/poe_vs_salary_scatter.png")
    - **Balanced**: Moderate distance, moderate SDI
 
 6. **Value Context**: POE per $1M adds a salary lens for identifying efficient shot makers relative to contract cost.
+7. **Shot-Making Value**: FG% residual vs salary isolates pure shot-making value from free-throw effects, surfacing players who convert above expectation even without heavy foul drawing.
+8. **Nonlinear Effects**: GAM partial dependence plots confirm strong non-linear penalties for shot distance, reinforcing the value of rim attempts and closer midrange looks.
 
 ## Implications
 
@@ -251,10 +296,12 @@ knitr::include_graphics("../figures/poe_vs_salary_scatter.png")
 - **Shot Selection**: SDI helps distinguish players who take difficult shots by choice vs. those forced into them.
 - **Team Building**: Archetype clustering can inform roster construction and lineup optimization.
 - **Contract Efficiency**: Salary overlays provide a first-order signal for value-based decision making.
+- **Shot-Making ROI**: FG% residual vs salary separates shot-making efficiency from free throws, helping identify underpaid pure shooters.
+- **Coaching Emphasis**: GAM patterns quantify the marginal penalty of longer-distance attempts, supporting shot selection priorities.
 
 ## Limitations
 
-This study uses league-wide averages and does not account for defensive pressure, which is the primary driver of shot difficulty. The xFG model is limited by the absence of tracking data. Salary data is scraped from a public source and may include reporting lags or contract nuances.
+This study uses league-wide averages and does not account for defensive pressure, which is the primary driver of shot difficulty. The xFG model is limited by the absence of tracking data. Salary data is scraped from a public source and may include reporting lags or contract nuances (current workflow uses 2024-25 salary data). FG residuals focus only on field-goal attempts and therefore do not capture value from free throws or playmaking.
 
 # Conclusion
 

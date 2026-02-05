@@ -1,0 +1,2 @@
+model,season,season_type,accuracy,auc_roc,log_loss,updated_at
+GAM (PyGAM),2025-26,regular,0.6252671136983273,0.6478156215814865,0.6453234655299968,2026-02-05T10:43:30

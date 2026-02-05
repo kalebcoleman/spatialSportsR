@@ -1,0 +1,2 @@
+model,season,season_type,accuracy,auc_roc,log_loss,updated_at
+xFG (Logistic Regression),2025-26,regular,0.6236420548701896,0.6443562595181992,0.6485960018724438,2026-02-05T10:45:57

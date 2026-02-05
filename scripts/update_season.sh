@@ -21,6 +21,9 @@ if [[ "${SKIP_ANALYSIS:-0}" != "1" ]]; then
   fi
 
   export SPATIALSPORTSR_DB_PATH="$repo_root/data/parsed/nba.sqlite"
+  export MPLBACKEND="${MPLBACKEND:-Agg}"
+  export MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/spatialsportsr-mpl}"
+  mkdir -p "$MPLCONFIGDIR"
 
   run_py() {
     local script="$1"

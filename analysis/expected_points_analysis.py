@@ -18,6 +18,7 @@ import os
 import sys
 import sqlite3
 from pathlib import Path
+from datetime import datetime
 
 import joblib
 import numpy as np
@@ -165,7 +166,7 @@ def generate_visualizations(df, season, output_dir):
     distance_bins = df.groupby(df['shot_distance_feet'].round())
     distance_analysis = distance_bins['SHOT_MADE_FLAG'].agg(['count', 'mean']).reset_index()
     distance_analysis.columns = ['distance', 'attempts', 'fg_pct']
-    distance_analysis = distance_analysis[distance_analysis['distance'] < 38]
+    distance_analysis = distance_analysis[distance_analysis['distance'] <= 35]
     
     ax1.bar(distance_analysis['distance'], distance_analysis['attempts'], width=0.8, alpha=0.8, color='skyblue')
     ax1.set_title(f'NBA Shot Distribution by Distance ({season})', fontsize=16)
@@ -234,11 +235,28 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print("MODEL RESULTS")
     print("="*50)
-    print(f"Accuracy:  {accuracy_score(y_test, y_pred):.4f}")
-    print(f"AUC-ROC:   {roc_auc_score(y_test, y_pred_proba):.4f}")
-    print(f"Log Loss:  {log_loss(y_test, y_pred_proba):.4f}")
+    accuracy = accuracy_score(y_test, y_pred)
+    auc_roc = roc_auc_score(y_test, y_pred_proba)
+    logloss = log_loss(y_test, y_pred_proba)
+
+    print(f"Accuracy:  {accuracy:.4f}")
+    print(f"AUC-ROC:   {auc_roc:.4f}")
+    print(f"Log Loss:  {logloss:.4f}")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
+
+    metrics_path = DATA_DIR / "model_metrics_xfg.csv"
+    metrics_df = pd.DataFrame([{
+        "model": "xFG (Logistic Regression)",
+        "season": SEASON,
+        "season_type": SEASON_TYPE,
+        "accuracy": accuracy,
+        "auc_roc": auc_roc,
+        "log_loss": logloss,
+        "updated_at": datetime.now().isoformat(timespec="seconds")
+    }])
+    metrics_df.to_csv(metrics_path, index=False)
+    print(f"Saved metrics: {metrics_path}")
     
     # Save model
     model_path = MODEL_DIR / f'xp_model_{SEASON}.joblib'

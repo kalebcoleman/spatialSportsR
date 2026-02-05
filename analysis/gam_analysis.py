@@ -14,6 +14,7 @@ Generates Partial Dependence Plots (PDPs) to visualize feature effects.
 import sys
 import pickle
 from pathlib import Path
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,7 +33,7 @@ DATA_DIR = ANALYSIS_DIR / "data"
 FIGURES_DIR = ANALYSIS_DIR / "figures"
 MODELS_DIR = ANALYSIS_DIR / "models"
 SEED = 42
-DISTANCE_CAP_FT = 40  # drop extreme heaves to stabilize GAM smooths
+DISTANCE_CAP_FT = 35  # drop extreme heaves to stabilize GAM smooths
 
 
 def load_data():
@@ -42,12 +43,13 @@ def load_data():
         raise FileNotFoundError("No shot data found in analysis/data/")
     latest_file = max(files, key=lambda f: f.stat().st_mtime)
     print(f"Loading {latest_file.name}...")
+    season = latest_file.stem.replace("shots_with_xp_", "")
     df = pd.read_parquet(latest_file)
     if "shot_distance_feet" in df.columns:
         df = df[df["shot_distance_feet"].between(0, DISTANCE_CAP_FT)].copy()
     if "SHOT_ZONE_BASIC" in df.columns:
         df = df[df["SHOT_ZONE_BASIC"].ne("Backcourt")].copy()
-    return df
+    return df, season
 
 
 def add_shot_type_features(df):
@@ -397,7 +399,7 @@ if __name__ == "__main__":
     print("=" * 60)
     
     # 1. Load Data
-    df = load_data()
+    df, season = load_data()
     print(f"Loaded {len(df):,} shots")
     
     # 2. Prepare Data with more features
@@ -433,11 +435,14 @@ if __name__ == "__main__":
     print("\n" + "=" * 40)
     print("EVALUATION")
     print("=" * 40)
-    print(f"Accuracy:  {gam.accuracy(X_test, y_test):.4f}")
-    
+    accuracy = gam.accuracy(X_test, y_test)
     y_pred_proba = gam.predict_proba(X_test)
-    print(f"AUC-ROC:   {roc_auc_score(y_test, y_pred_proba):.4f}")
-    print(f"Log Loss:  {log_loss(y_test, y_pred_proba):.4f}")
+    auc_roc = roc_auc_score(y_test, y_pred_proba)
+    logloss = log_loss(y_test, y_pred_proba)
+
+    print(f"Accuracy:  {accuracy:.4f}")
+    print(f"AUC-ROC:   {auc_roc:.4f}")
+    print(f"Log Loss:  {logloss:.4f}")
     
     # 5. Generate All Visualizations
     print("\n" + "=" * 40)
@@ -452,10 +457,23 @@ if __name__ == "__main__":
     plot_spatial_tensor(gam, FIGURES_DIR, df_clean)
     
     # 6. Save Model
-    model_path = MODELS_DIR / "gam_model_2025-26.pkl"
+    model_path = MODELS_DIR / f"gam_model_{season}.pkl"
     with open(model_path, 'wb') as f:
         pickle.dump(gam, f)
     print(f"\nModel saved to {model_path}")
+
+    metrics_path = DATA_DIR / "model_metrics_gam.csv"
+    metrics_df = pd.DataFrame([{
+        "model": "GAM (PyGAM)",
+        "season": season,
+        "season_type": "regular",
+        "accuracy": accuracy,
+        "auc_roc": auc_roc,
+        "log_loss": logloss,
+        "updated_at": datetime.now().isoformat(timespec="seconds")
+    }])
+    metrics_df.to_csv(metrics_path, index=False)
+    print(f"Saved metrics: {metrics_path}")
     
     print("\n" + "=" * 60)
     print("COMPLETE - Generated 7 visualization files")
