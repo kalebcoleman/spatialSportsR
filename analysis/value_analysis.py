@@ -57,6 +57,18 @@ def load_data():
             f"Available: {', '.join(stats_df.columns)}"
         )
 
+    # Ensure FG residual metrics exist
+    if 'fg_pct' in stats_df.columns and 'avg_xp_prob' in stats_df.columns:
+        if 'fg_residual' not in stats_df.columns:
+            stats_df['fg_residual'] = stats_df['fg_pct'] - stats_df['avg_xp_prob']
+        if 'fg_residual_pct' not in stats_df.columns:
+            stats_df['fg_residual_pct'] = stats_df['fg_residual'] * 100
+    elif 'shooting_skill' in stats_df.columns:
+        if 'fg_residual' not in stats_df.columns:
+            stats_df['fg_residual'] = stats_df['shooting_skill']
+        if 'fg_residual_pct' not in stats_df.columns:
+            stats_df['fg_residual_pct'] = stats_df['fg_residual'] * 100
+
     return stats_df, salary_df
 
 
@@ -166,6 +178,43 @@ def plot_value_chart(df, output_path):
     plt.close()
 
 
+def plot_fg_residual_chart(df, output_path):
+    """Create scatter plot of FG% residual vs Salary."""
+    fig, ax = plt.subplots(figsize=(14, 10))
+
+    scatter = ax.scatter(
+        df['salary_millions'],
+        df['fg_residual_pct'],
+        s=df['total_attempts'] / 5,
+        c=df['fg_residual_pct'],
+        cmap='RdYlGn',
+        alpha=0.7,
+        edgecolors='black',
+        linewidths=0.5
+    )
+
+    for _, row in df.iterrows():
+        ax.annotate(
+            row['PLAYER_NAME'].split()[-1],
+            (row['salary_millions'], row['fg_residual_pct']),
+            fontsize=8,
+            alpha=0.8
+        )
+
+    ax.axhline(0, color='gray', linestyle='--', alpha=0.5)
+    ax.set_xlabel('Salary ($M)', fontsize=12)
+    ax.set_ylabel('FG% Residual (Actual - Expected) in % pts', fontsize=12)
+    ax.set_title('Player Value: FG% Residual vs Salary\n(Size = Volume, Color = FG% Residual)', fontsize=14)
+
+    cbar = plt.colorbar(scatter, ax=ax)
+    cbar.set_label('FG% Residual (pct pts)', fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=200, bbox_inches='tight')
+    print(f"Saved: {output_path}")
+    plt.close()
+
+
 def create_value_report(df):
     """Print value analysis report."""
     print("\n" + "=" * 60)
@@ -221,6 +270,9 @@ if __name__ == "__main__":
     
     # Plot
     plot_value_chart(value_df, FIGURES_DIR / "poe_vs_salary_scatter.png")
+
+    if 'fg_residual_pct' in value_df.columns:
+        plot_fg_residual_chart(value_df, FIGURES_DIR / "fg_residual_vs_salary_scatter.png")
     
     print("\n" + "=" * 60)
     print("COMPLETE")

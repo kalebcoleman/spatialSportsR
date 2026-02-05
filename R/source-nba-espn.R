@@ -197,6 +197,9 @@ source_nba_espn <- function() {
             parsed[[nm]]$season_type <- rep(stype_norm, nrow(parsed[[nm]]))
           }
         }
+        for (nm in names(parsed)) {
+          parsed[[nm]] <- .espn_nba_normalize_season(parsed[[nm]])
+        }
         return(parsed)
       }
 
@@ -233,6 +236,10 @@ source_nba_espn <- function() {
         if (is.data.frame(parsed[[nm]])) {
           parsed[[nm]]$season_type <- rep(stype, nrow(parsed[[nm]]))
         }
+      }
+
+      for (nm in names(parsed)) {
+        parsed[[nm]] <- .espn_nba_normalize_season(parsed[[nm]])
       }
 
       parsed
@@ -277,6 +284,30 @@ source_nba_espn <- function() {
 .espn_nba_add_source <- function(df, source = "espn") {
   if (!is.data.frame(df)) return(df)
   df$source <- rep(source, nrow(df))
+  df
+}
+
+.espn_nba_normalize_season <- function(df) {
+  if (!is.data.frame(df)) return(df)
+  if (!"season" %in% names(df)) return(df)
+
+  normalize_one <- function(x) {
+    if (is.na(x)) return(NA_character_)
+    x <- as.character(x)
+    if (!nzchar(x)) return(x)
+    if (exists(".nba_stats_season_string", mode = "function")) {
+      return(.nba_stats_season_string(x))
+    }
+    if (grepl("^\\d{4}$", x)) {
+      end_year <- suppressWarnings(as.integer(x))
+      if (is.na(end_year)) return(x)
+      start_year <- end_year - 1L
+      return(sprintf("%d-%02d", start_year, end_year %% 100))
+    }
+    x
+  }
+
+  df$season <- vapply(df$season, normalize_one, character(1))
   df
 }
 

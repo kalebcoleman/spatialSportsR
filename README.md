@@ -48,6 +48,33 @@ python analysis/value_analysis.py            # POE per $1M rankings
 - 124k+ shots from 2025-26 season
 - 467 player salaries from Basketball-Reference
 
+## Data Updates
+
+Manual run:
+
+```bash
+Rscript scripts/update_season.R --season=2026 --season-type=regular --backfill-days=3 --sources=espn,nba_stats
+```
+
+Install the daily launchd job (4:00 AM local time):
+
+```bash
+launchctl bootstrap gui/$(id -u) /Users/itzjuztmya/Kaleb/spatialSportsR/scripts/launchd/com.spatialSportsR.update.plist
+```
+
+Note: the launchd job runs `scripts/update_season.sh`, which executes the data update and then refreshes analysis figures. To skip analysis, set `SKIP_ANALYSIS=1` in your environment before running the script.
+
+Uninstall the launchd job:
+
+```bash
+launchctl bootout gui/$(id -u)/com.spatialSportsR.update
+```
+
+Logs:
+- `logs/update_season.out`
+- `logs/update_season.err`
+- `logs/update_season_runs.csv`
+
 ## Structure
 
 ```

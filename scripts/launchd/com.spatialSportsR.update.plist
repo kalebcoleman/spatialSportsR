@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.spatialSportsR.update</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/itzjuztmya/Kaleb/spatialSportsR</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/itzjuztmya/Kaleb/spatialSportsR/scripts/update_season.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Hour</key>
+      <integer>4</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/itzjuztmya/Kaleb/spatialSportsR/logs/update_season.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/itzjuztmya/Kaleb/spatialSportsR/logs/update_season.err</string>
+  </dict>
+</plist>

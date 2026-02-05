@@ -79,6 +79,9 @@ def compute_player_summary(shots_df, min_attempts=250):
     summary['fg_pct'] = summary['total_makes'] / summary['total_attempts']
     summary['poe_per_100'] = (summary['total_poe'] / summary['total_attempts']) * 100
     summary['shooting_skill'] = summary['fg_pct'] - summary['avg_xp_prob']
+    summary['expected_fg_pct'] = summary['avg_xp_prob']
+    summary['fg_residual'] = summary['shooting_skill']
+    summary['fg_residual_pct'] = summary['fg_residual'] * 100
     
     return summary
 
