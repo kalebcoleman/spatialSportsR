@@ -1,3 +1,12 @@
+"""
+Shot Density Heatmap Visualization.
+
+Generates full-court hexbin density plots with shot statistics.
+Uses local draw_court function for full-court specific styling.
+
+For half-court visualizations, use court_utils.draw_half_court instead.
+"""
+
 import math
 import os
 import sqlite3
@@ -584,6 +593,11 @@ def generate_shot_chart(
     plt.close(fig) # Close the figure to free memory
 
 if __name__ == "__main__":
+    from pathlib import Path
+    ANALYSIS_DIR = Path(__file__).parent
+    OUTPUT_DIR = ANALYSIS_DIR / "outputs"
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    
     current_season = "2025-26"
     current_season_type = "regular"
 
@@ -596,13 +610,13 @@ if __name__ == "__main__":
         court_line_color="white",
         font_color="white",
         stat_label_color="white",
-        output_filename="shot_density_hexbin_2025-26_dark.png",
+        output_filename=str(OUTPUT_DIR / f"shot_density_hexbin_{current_season}_dark.png"),
         title_text="Shot Density Heatmap Analysis",
         subtitle_text="2025-2026 NBA Regular Season",
         author_name_text="Kaleb Coleman",
         cmap_hexbin="YlOrRd",
         stat_value_cmap_index=0.6,
-        show_plot=False # Don't show this plot immediately
+        show_plot=False
     )
 
     # Light Theme Plot
@@ -610,16 +624,15 @@ if __name__ == "__main__":
         season=current_season,
         season_type=current_season_type,
         bg_color="white",
-        court_bg_color="#D0D0D0", # Darkened light grey
+        court_bg_color="#D0D0D0",
         court_line_color="black",
         font_color="black",
-        stat_label_color="gray", # Slightly lighter than black for labels
-        output_filename="shot_density_hexbin_2025-26_light.png",
+        stat_label_color="gray",
+        output_filename=str(OUTPUT_DIR / f"shot_density_hexbin_{current_season}_light.png"),
         title_text="Shot Density Heatmap Analysis",
         subtitle_text="2025-2026 NBA Regular Season",
         author_name_text="Kaleb Coleman",
-        cmap_hexbin="YlOrRd", # Changed back to YlOrRd
+        cmap_hexbin="YlOrRd",
         stat_value_cmap_index=0.6,
-        show_plot=True # Show the last plot generated
+        show_plot=False
     )
-
