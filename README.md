@@ -33,7 +33,7 @@ streamlit run app/streamlit_app.py
 ### Advanced Analytics
 1. **Residual Analysis** - Over/underperformance vs expectations (Green=Over, Red=Under).
 2. **Shot Difficulty Index (SDI)** - Quantifies shot complexity based on 5-year historical difficulty.
-3. **Player Archetypes** - K-means clustering (e.g., "High SDI / Non-3", "Rim Heavy").
+3. **Player Archetypes** - role-aware GMM clustering (e.g., "Guard - Perimeter-Focused (High Usage)", "Big - Paint-Dominant").
 4. **Value Analysis** - POE per $1M identifying underpaid stars and efficient role players.
 5. **GAM PDPs** - Nonlinear effects visualizing the "zone of death" and shot angle impacts.
 

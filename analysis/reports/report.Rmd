@@ -9,7 +9,7 @@ bibliography: references.bib
 
 # Abstract
 
-This paper presents a reproducible, end-to-end examination of NBA offensive strategy and player performance. We detail a comprehensive shot dataset compiled via a custom data pipeline spanning the 2014-15 through 2025-26 seasons. Using this data, we develop an expected field goal (xFG) model via logistic regression, achieving 63% accuracy with 0.653 AUC-ROC. Building on this foundation, we deliver three advanced analytics products: (1) Residual Analysis to identify players who over/underperform expectations, (2) a Shot Difficulty Index (SDI) quantifying shot complexity, and (3) K-Means clustering to identify player shot archetypes. We then integrate salary data to contextualize performance via POE per $1M and a complementary FG% residual vs salary view that isolates shot-making independent of free throws. Results highlight Luke Kennard as a top overperformer (+12.3% residual) and surface distinct shot-profile archetypes (e.g., rim-heavy and high‑3PT profiles).
+This paper presents a reproducible, end-to-end examination of NBA offensive strategy and player performance. We detail a comprehensive shot dataset compiled via a custom data pipeline spanning the 2014-15 through 2025-26 seasons. Using this data, we develop an expected field goal (xFG) model via logistic regression, achieving 63% accuracy with 0.653 AUC-ROC. Building on this foundation, we deliver three advanced analytics products: (1) Residual Analysis to identify players who over/underperform expectations, (2) a Shot Difficulty Index (SDI) quantifying shot complexity, and (3) role‑aware GMM clustering to identify player shot archetypes. We then integrate salary data to contextualize performance via POE per $1M and a complementary FG% residual vs salary view that isolates shot-making independent of free throws. Results highlight Luke Kennard as a top overperformer (+12.3% residual) and surface distinct shot-profile archetypes (e.g., **Paint-Dominant** and **Perimeter-Focused** profiles).
 
 # Introduction
 
@@ -39,11 +39,60 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 set.seed(123)
 suppressPackageStartupMessages({
   library(dplyr)
-  library(arrow)
   library(knitr)
-  library(DBI)
-  library(RSQLite)
 })
+
+has_arrow <- requireNamespace("arrow", quietly = TRUE)
+has_reticulate <- requireNamespace("reticulate", quietly = TRUE)
+
+if (has_arrow) {
+  library(arrow)
+}
+
+find_project_python <- function(start_dir = getwd(), max_up = 6) {
+  cur <- normalizePath(start_dir, mustWork = FALSE)
+  for (i in seq_len(max_up + 1)) {
+    candidate <- file.path(cur, ".venv", "bin", "python")
+    if (file.exists(candidate)) {
+      return(candidate)
+    }
+    parent <- dirname(cur)
+    if (identical(parent, cur)) {
+      break
+    }
+    cur <- parent
+  }
+  return(NA_character_)
+}
+
+reticulate_python <- NA_character_
+if (has_reticulate) {
+  reticulate_python <- find_project_python()
+  if (!is.na(reticulate_python)) {
+    Sys.setenv(RETICULATE_PYTHON = reticulate_python)
+  }
+}
+
+read_shots_parquet <- function(path) {
+  if (has_arrow) {
+    return(arrow::read_parquet(path))
+  }
+  if (has_reticulate) {
+    if (!is.na(reticulate_python)) {
+      reticulate::use_python(reticulate_python, required = TRUE)
+    }
+    pd <- reticulate::import("pandas", delay_load = FALSE)
+    tmp_csv <- tempfile(fileext = ".csv")
+    on.exit(unlink(tmp_csv), add = TRUE)
+    pd$read_parquet(path)$to_csv(tmp_csv, index = FALSE)
+    return(read.csv(tmp_csv, stringsAsFactors = FALSE))
+  }
+  stop("Cannot read parquet: install R package 'arrow' or enable reticulate+pandas.")
+}
+
+if (!has_arrow) {
+  message("arrow package not found; using reticulate+pandas fallback to read parquet.")
+}
 ```
 
 ## Data Sources and Pipeline
@@ -98,25 +147,79 @@ Higher SDI indicates a more difficult shot.
 
 ## Player Clustering
 
-K-Means clustering was applied to player-level features:
+Role‑aware Gaussian Mixture Models (GMMs) were applied to player‑level features,
+with the number of clusters per role chosen by minimum BIC (k=2..6).
 
-- Zone percentages (6 zones)
-- Average shot distance
-- Pull-up rate (jump shot percentage)
-- Average xFG and SDI
-- Usage% (minutes-weighted from NBA Stats usage table)
-- Attempts per game (usage proxy / fallback)
+Player features include:
 
-Clusters were reduced to 2D via PCA for visualization.
+- Shot diet composition (rim, mid‑range, corner 3, above‑the‑break 3)
+- Distance distribution (std, IQR, entropy)
+- Shot‑type rates (pull‑ups, layups, dunks, hooks, floaters)
+- Difficulty/efficiency (avg SDI, avg xFG, actual FG%)
+- Usage and volume (usage%, attempts per game)
 
-Archetype names are assigned *post‑hoc* using simple heuristics on cluster averages
-(e.g., 3PT share, SDI, and usage level). These labels describe **shot profiles** only
-and do not incorporate defensive role or on‑ball context.
+Players are first grouped into coarse roles (Big/Wing/Guard) using shot‑diet
+thresholds (rim share, 3PT share, and distance), then clustered within those
+roles. SDI is explicitly included in the clustering feature set and is given
+extra weight to emphasize shot‑difficulty separation. PCA is used **only** for
+2D visualization; it preserves variance, not cluster semantics, so spatial
+proximity in the plot may not reflect why players were clustered.
+
+Archetype names are assigned *post‑hoc* using cluster averages (rim%, 3PT%,
+mid‑range share, SDI, usage). Labels are based on **season-relative quantiles**
+(`q70` for rim/3PT/midrange dominance) rather than fixed absolute cutoffs. We
+use spatial-descriptive labels (e.g., "Paint-Dominant", "Perimeter-Focused")
+rather than evaluative terms to clarify that these are shot profiles, not skill
+assessments.
+
+**SDI-Based Split**: For players with mixed (multi-zone) profiles, we split the cluster by Shot Difficulty Index (SDI):
+- **Shot Creator (Mixed)**: Higher SDI than the season median (difficult, self-created shots).
+- **Role Player (Mixed)**: SDI at/below the season median (easier, scheme-generated looks).
+
+Usage does not determine creator vs role-player; it only adds suffixes such as
+`(High Usage)` and `(Low Usage)` using top/bottom 30% cut points.
+
+> **Disclaimer**: These archetypes describe shot location and difficulty patterns only. They do NOT imply offensive skill, versatility, or overall player quality.
+
+**Clustering variables and SQL sources**
+
+- `pct_rim`: Share of shots in Restricted Area + In The Paint (Non‑RA).  
+  Source: `nba_stats_shots.SHOT_ZONE_BASIC` aggregated per player.
+- `pct_midrange`: Share of shots in Mid‑Range.  
+  Source: `nba_stats_shots.SHOT_ZONE_BASIC`.
+- `pct_3pt`: Share of 3PT shots (Above the Break + both corners).  
+  Source: `nba_stats_shots.SHOT_ZONE_BASIC`.
+- `pct_corner_3`: Share of corner threes (Left/Right Corner 3).  
+  Source: `nba_stats_shots.SHOT_ZONE_BASIC`.
+- `distance_std`: Std. dev. of shot distance (feet).  
+  Source: `nba_stats_shots.SHOT_DISTANCE` with fallback to `LOC_X/LOC_Y`.
+- `distance_entropy`: Entropy of shot‑distance bins `[0, 3, 10, 16, 24, 30, 40]`.  
+  Source: `nba_stats_shots.SHOT_DISTANCE`.
+- `avg_sdi`: Avg. Shot Difficulty Index (SDI).  
+  Source: derived from `SHOT_DISTANCE`, `MINUTES_REMAINING`, `SECONDS_REMAINING`,
+  `ACTION_TYPE`, `SHOT_ZONE_BASIC`, and `LOC_X/LOC_Y` (angle).
+- `pullup_rate`: Share of shots tagged as jump shots/pull‑ups.  
+  Source: `nba_stats_shots.ACTION_TYPE` text rules.
+- `usage_pct`: Minutes‑weighted usage%.  
+  Source: `nba_stats_player_box_usage.usagePercentage`.
+- `attempts_per_game`: Total attempts ÷ games played.  
+  Source: `nba_stats_shots` grouped by `PLAYER_ID` and `GAME_ID`.
+
+Note: `xP_prob` (xFG) is produced by the logistic model and is **not** a clustering
+feature in the current setup; SDI is included and given extra weight.
+
+We select the number of components (k) per role using Bayesian Information
+Criterion (BIC), evaluating k=2..6 and choosing the minimum BIC. Lower BIC
+indicates a better balance of fit and parsimony; the chart below shows the
+role‑specific BIC curves and highlights the selected k for each group.
+`cluster_confidence` is reported as the in-sample GMM posterior assignment
+probability and should be interpreted as relative assignment certainty, not
+calibrated uncertainty.
 
 ## Analysis Dataset
 
 ```{r load-shots}
-shots <- arrow::read_parquet("../data/shots_with_xp_2025-26.parquet")
+shots <- read_shots_parquet("../data/shots_with_xp_2025-26.parquet")
 residuals <- read.csv("../data/player_residuals.csv")
 clusters <- read.csv("../data/player_clusters.csv")
 ```
@@ -250,12 +353,12 @@ Why: Relate shot difficulty to efficiency and residual performance.
 
 ```{r clusters-table}
 cluster_summary <- clusters |>
-  group_by(archetype) |>
+  group_by(role, archetype) |>
   summarise(
     count = n(),
-    avg_distance = mean(avg_distance),
-    avg_xFG = mean(avg_xFG),
-    avg_sdi = mean(avg_sdi),
+    avg_rim = mean(pct_rim, na.rm = TRUE),
+    avg_3pt = mean(pct_3pt, na.rm = TRUE),
+    avg_entropy = mean(distance_entropy, na.rm = TRUE),
     avg_usage = mean(usage_pct, na.rm = TRUE),
     avg_apg = mean(attempts_per_game, na.rm = TRUE),
     .groups = "drop"
@@ -263,13 +366,21 @@ cluster_summary <- clusters |>
 kable(cluster_summary, digits = 3, caption = "Player Archetype Summary")
 ```
 
-```{r cluster-scatter-fig, echo=FALSE, fig.cap="PCA visualization of player shot archetypes.", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
+```{r cluster-scatter-fig, echo=FALSE, fig.cap="PCA visualization of player shot archetypes (color = archetype).", fig.align="center", out.width="0.95\\linewidth", fig.pos="H"}
 knitr::include_graphics("../figures/player_archetypes_scatter.png")
 ```
-Data: Player feature matrix (zone mix, distance, SDI, usage/volume) from 2025-26 shots.  
-Filters: Players with >=200 attempts; PCA for visualization.  
+Data: Player feature matrix (shot diet, distance distribution, difficulty, usage) from 2025-26 shots.  
+Filters: Players with >=200 attempts; role-aware GMM clustering (k chosen by BIC).  
 Exclusions: Low-volume players; missing usage when unavailable.  
-Why: Visualize clustering of shot-profile archetypes.
+Why: Visualize clustering of shot-profile archetypes (PCA used only for visualization).
+
+```{r gmm-bic-fig, echo=FALSE, fig.cap="GMM model selection by role using BIC (lower is better). Selected k is highlighted for each role.", fig.align="center", out.width="0.85\\linewidth", fig.pos="H"}
+knitr::include_graphics("../figures/gmm_bic_by_role.png")
+```
+Data: Role-split player feature matrix; BIC evaluated for k=2..6.  
+Filters: Players with >=200 attempts.  
+Exclusions: Roles with fewer than two players skip model selection.  
+Why: Show how k was chosen per role and the relative tradeoff between fit and complexity.
 
 ## Shot Density
 
@@ -348,10 +459,11 @@ Why: Isolate pure shot-making efficiency relative to salary.
 
 4. **Shot Difficulty**: Players like Isaiah Joe and AJ Green take the most difficult shots (high SDI), while rim attackers like Gobert have low SDI.
 
-5. **Archetypes**: Distinct *shot-profile* types emerged based on zone mix, SDI, and usage. Labels are heuristic and role‑agnostic:
-   - **Rim Heavy / Low Distance**: Low distance, low SDI, high efficiency
-   - **High 3PT / High SDI**: High distance, high SDI, moderate efficiency
-   - **Balanced**: Moderate distance, moderate SDI
+5. **Archetypes**: Distinct *shot-profile* types emerged based on zone mix, SDI, and usage. Labels are spatial-descriptive:
+   - **Paint-Dominant**: Rim/paint share above the season `q70` threshold.
+   - **Perimeter-Focused**: 3PT share above the season `q70` threshold.
+   - **Shot Creator (Mixed)**: Multi-zone profile with SDI above season median.
+   - **Role Player (Mixed)**: Multi-zone profile with SDI at/below season median.
 
 6. **Value Context**: POE per $1M adds a salary lens for identifying efficient shot makers relative to contract cost.
 7. **Shot-Making Value**: FG% residual vs salary isolates pure shot-making value from free-throw effects, surfacing players who convert above expectation even without heavy foul drawing.
