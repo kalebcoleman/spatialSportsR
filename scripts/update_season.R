@@ -145,6 +145,11 @@ log_run <- function(source, rows, error = NULL) {
   )
 }
 
+log_info <- function(...) {
+  ts <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  message(sprintf("[%s] %s", ts, paste0(..., collapse = "")))
+}
+
 normalize_datetime_cols <- function(tbl) {
   for (col in names(tbl)) {
     if (inherits(tbl[[col]], "Date")) {
@@ -272,19 +277,19 @@ normalize_espn_tables <- function(tables, season_label) {
   tables
 }
 
-message("Update season: ", season_label, " (", season_type_norm, ")")
-message("Sources: ", paste(sources, collapse = ", "))
-message("DB: ", db_path)
-message("Raw dir: ", raw_dir)
-message("Parsed dir: ", out_dir)
+log_info("Update season: ", season_label, " (", season_type_norm, ")")
+log_info("Sources: ", paste(sources, collapse = ", "))
+log_info("DB: ", db_path)
+log_info("Raw dir: ", raw_dir)
+log_info("Parsed dir: ", out_dir)
 
 if ("espn" %in% sources) {
-  message("ESPN update starting...")
+  log_info("ESPN update starting...")
   tryCatch({
     today <- Sys.Date()
     max_date <- get_espn_max_date(db_path, list(season_label, season_end), season_type_norm)
     if (!is.na(max_date) && max_date > today) {
-      message("ESPN max game_date is in the future (", format(max_date), "); clamping to today (", format(today), ").")
+      log_info("ESPN max game_date is in the future (", format(max_date), "); clamping to today (", format(today), ").")
       max_date <- today
     }
     if (is.na(max_date)) {
@@ -298,19 +303,23 @@ if ("espn" %in% sources) {
       if (date_from > date_to) date_from <- date_to
     }
 
-    message("ESPN backfill window: ", format(date_from), " to ", format(date_to))
-    collect_raw(
+    log_info("ESPN backfill window: ", format(date_from), " to ", format(date_to))
+    espn_collect <- collect_raw(
       league = "nba",
       source = "espn",
       season = season_end,
       raw_dir = raw_dir,
       force = force_espn,
       progress = FALSE,
-      quiet = FALSE,
+      quiet = TRUE,
       season_type = espn_season_type,
       date_from = date_from,
       date_to = date_to
     )
+
+    games_count <- if (is.list(espn_collect) && !is.null(espn_collect$games)) nrow(espn_collect$games) else NA_integer_
+    raw_count <- if (is.list(espn_collect) && !is.null(espn_collect$raw_paths)) sum(!is.na(espn_collect$raw_paths)) else NA_integer_
+    log_info("ESPN collect complete: games=", games_count, " raw_files=", raw_count)
 
     tables_espn <- parse_raw(
       league = "nba",
@@ -318,10 +327,18 @@ if ("espn" %in% sources) {
       season = season_end,
       raw_dir = raw_dir,
       progress = FALSE,
-      quiet = FALSE,
+      quiet = TRUE,
       season_type = espn_season_type
     )
     tables_espn <- normalize_espn_tables(tables_espn, season_label)
+    log_info(
+      "ESPN parse complete: games=",
+      if (!is.null(tables_espn$games)) nrow(tables_espn$games) else 0L,
+      " events=",
+      if (!is.null(tables_espn$events)) nrow(tables_espn$events) else 0L,
+      " teams=",
+      if (!is.null(tables_espn$teams)) nrow(tables_espn$teams) else 0L
+    )
 
     espn_out_dir <- file.path(out_dir, "nba", "espn", season_label)
     write_tables(
@@ -343,7 +360,7 @@ if ("espn" %in% sources) {
 
     total_rows <- sum(vapply(tables_espn, function(x) if (is.data.frame(x)) nrow(x) else 0L, integer(1)))
     log_run("espn", total_rows, error = NULL)
-    message("ESPN update complete.")
+    log_info("ESPN update complete.")
   }, error = function(e) {
     log_run("espn", 0L, error = conditionMessage(e))
     stop(e)
@@ -351,11 +368,11 @@ if ("espn" %in% sources) {
 }
 
 if ("nba_stats" %in% sources) {
-  message("NBA Stats update starting...")
+  log_info("NBA Stats update starting...")
   tryCatch({
     if (isTRUE(force_nba_stats_index)) {
-      message("Refreshing NBA Stats index...")
-      nba_stats_collect_game_index(
+      log_info("Refreshing NBA Stats index...")
+      nba_index <- nba_stats_collect_game_index(
         season = season_end,
         raw_dir = .raw_league_dir(
           raw_dir = raw_dir,
@@ -368,20 +385,26 @@ if ("nba_stats" %in% sources) {
         season_type = nba_stats_season_type,
         save_index = TRUE
       )
+      if (is.list(nba_index) && !is.null(nba_index$games)) {
+        log_info("NBA Stats index games: ", nrow(nba_index$games))
+      }
     }
 
-    collect_raw(
+    nba_collect <- collect_raw(
       league = "nba",
       source = "nba_stats",
       season = season_end,
       raw_dir = raw_dir,
       force = FALSE,
       progress = FALSE,
-      quiet = FALSE,
+      quiet = TRUE,
       season_type = nba_stats_season_type,
       workers = workers,
       rate_sleep = rate_sleep
     )
+    nba_games_count <- if (is.list(nba_collect) && !is.null(nba_collect$games)) nrow(nba_collect$games) else NA_integer_
+    nba_raw_count <- if (is.list(nba_collect) && !is.null(nba_collect$raw_paths)) sum(!is.na(nba_collect$raw_paths)) else NA_integer_
+    log_info("NBA Stats collect complete: games=", nba_games_count, " raw_files=", nba_raw_count)
 
     if (isTRUE(force_shotchart)) {
       nba_stats_raw_dir <- .raw_league_dir(
@@ -391,7 +414,7 @@ if ("nba_stats" %in% sources) {
         source = "nba_stats",
         season_type = season_type_norm
       )
-      message("Refreshing NBA Stats shotchart...")
+      log_info("Refreshing NBA Stats shotchart...")
       collect_nba_shotchart(
         season = season_label,
         season_type = nba_stats_season_type,
@@ -407,8 +430,16 @@ if ("nba_stats" %in% sources) {
       season = season_end,
       raw_dir = raw_dir,
       progress = FALSE,
-      quiet = FALSE,
+      quiet = TRUE,
       season_type = nba_stats_season_type
+    )
+    log_info(
+      "NBA Stats parse complete: games=",
+      if (!is.null(tables_nba$games)) nrow(tables_nba$games) else 0L,
+      " shots=",
+      if (!is.null(tables_nba$shots)) nrow(tables_nba$shots) else 0L,
+      " pbp=",
+      if (!is.null(tables_nba$pbp)) nrow(tables_nba$pbp) else 0L
     )
 
     nba_out_dir <- file.path(out_dir, "nba", "nba_stats", season_label)
@@ -431,11 +462,11 @@ if ("nba_stats" %in% sources) {
 
     total_rows <- sum(vapply(tables_nba, function(x) if (is.data.frame(x)) nrow(x) else 0L, integer(1)))
     log_run("nba_stats", total_rows, error = NULL)
-    message("NBA Stats update complete.")
+    log_info("NBA Stats update complete.")
   }, error = function(e) {
     log_run("nba_stats", 0L, error = conditionMessage(e))
     stop(e)
   })
 }
 
-message("Update finished.")
+log_info("Update finished.")
