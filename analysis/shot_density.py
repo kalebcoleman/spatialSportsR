@@ -356,6 +356,9 @@ def generate_shot_chart(
 ):
     df = load_shots(season, season_type)
     print(f"rows: {len(df)} for {season} {season_type}")
+    if df.empty:
+        print(f"No shot rows available for {season} ({season_type}); skipping chart render.")
+        return False
 
     summary = summarize_shots(df)
     print(f"FG%: {round(summary['total_fg'] * 100, 1)}%")
@@ -605,7 +608,7 @@ if __name__ == "__main__":
     current_season_type = "regular"
 
     # Dark Theme Plot
-    generate_shot_chart(
+    rendered_dark = generate_shot_chart(
         season=current_season,
         season_type=current_season_type,
         bg_color="#23272B",
@@ -623,7 +626,7 @@ if __name__ == "__main__":
     )
 
     # Light Theme Plot
-    generate_shot_chart(
+    rendered_light = generate_shot_chart(
         season=current_season,
         season_type=current_season_type,
         bg_color="white",

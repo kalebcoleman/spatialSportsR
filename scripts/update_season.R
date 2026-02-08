@@ -88,6 +88,7 @@ rate_sleep <- normalize_rate_sleep(get_arg(opts, "rate-sleep", "0.5,1.2"))
 force_shotchart <- to_bool(get_arg(opts, "force-shotchart", "true"), default = TRUE)
 force_espn <- to_bool(get_arg(opts, "force-espn", "true"), default = TRUE)
 force_nba_stats_index <- to_bool(get_arg(opts, "force-nba-stats-index", "true"), default = TRUE)
+espn_full_refresh <- to_bool(get_arg(opts, "espn-full-refresh", "false"), default = FALSE)
 
 if (is.na(backfill_days) || backfill_days < 0) backfill_days <- 0L
 if (is.na(workers) || workers < 1L) workers <- 1L
@@ -265,6 +266,42 @@ get_espn_max_date <- function(db_path, season_values, season_type_norm) {
   as.Date(max_date)
 }
 
+get_sqlite_season_row_count <- function(db_path, table_name, season_values, season_type_norm = NULL) {
+  if (!file.exists(db_path)) return(0L)
+  con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  if (!DBI::dbExistsTable(con, table_name)) return(0L)
+
+  cols <- DBI::dbListFields(con, table_name)
+  where <- character()
+  params <- list()
+
+  if ("season" %in% cols && length(season_values) > 0) {
+    if (length(season_values) > 1) {
+      placeholders <- paste(rep("?", length(season_values)), collapse = ", ")
+      where <- c(where, paste0("season IN (", placeholders, ")"))
+      params <- c(params, as.list(season_values))
+    } else {
+      where <- c(where, "season = ?")
+      params <- c(params, season_values[[1]])
+    }
+  }
+
+  if ("season_type" %in% cols && !is.null(season_type_norm) && nzchar(as.character(season_type_norm))) {
+    where <- c(where, "season_type = ?")
+    params <- c(params, season_type_norm)
+  }
+
+  query <- paste0("SELECT COUNT(*) AS n FROM ", DBI::dbQuoteIdentifier(con, table_name))
+  if (length(where) > 0) {
+    query <- paste0(query, " WHERE ", paste(where, collapse = " AND "))
+  }
+
+  res <- tryCatch(DBI::dbGetQuery(con, query, params = params), error = function(e) NULL)
+  if (is.null(res) || nrow(res) == 0 || is.na(res$n[[1]])) return(0L)
+  as.integer(res$n[[1]])
+}
+
 normalize_espn_tables <- function(tables, season_label) {
   for (nm in names(tables)) {
     tbl <- tables[[nm]]
@@ -287,23 +324,30 @@ if ("espn" %in% sources) {
   log_info("ESPN update starting...")
   tryCatch({
     today <- Sys.Date()
-    max_date <- get_espn_max_date(db_path, list(season_label, season_end), season_type_norm)
-    if (!is.na(max_date) && max_date > today) {
-      log_info("ESPN max game_date is in the future (", format(max_date), "); clamping to today (", format(today), ").")
-      max_date <- today
-    }
-    if (is.na(max_date)) {
-      date_from <- today - backfill_days
-    } else {
-      date_from <- max_date - backfill_days
-    }
     date_to <- today
-    if (date_from > date_to) {
-      date_from <- date_to - backfill_days
-      if (date_from > date_to) date_from <- date_to
+    date_from <- NULL
+
+    if (isTRUE(espn_full_refresh)) {
+      log_info("ESPN full refresh enabled: forcing season-to-date overwrite in raw JSON.")
+      log_info("ESPN refresh window: season start to ", format(date_to))
+    } else {
+      max_date <- get_espn_max_date(db_path, list(season_label, season_end), season_type_norm)
+      if (!is.na(max_date) && max_date > today) {
+        log_info("ESPN max game_date is in the future (", format(max_date), "); clamping to today (", format(today), ").")
+        max_date <- today
+      }
+      if (is.na(max_date)) {
+        date_from <- today - backfill_days
+      } else {
+        date_from <- max_date - backfill_days
+      }
+      if (date_from > date_to) {
+        date_from <- date_to - backfill_days
+        if (date_from > date_to) date_from <- date_to
+      }
+      log_info("ESPN backfill window: ", format(date_from), " to ", format(date_to))
     }
 
-    log_info("ESPN backfill window: ", format(date_from), " to ", format(date_to))
     espn_collect <- collect_raw(
       league = "nba",
       source = "espn",
@@ -433,14 +477,35 @@ if ("nba_stats" %in% sources) {
       quiet = TRUE,
       season_type = nba_stats_season_type
     )
+    nba_games_rows <- if (!is.null(tables_nba$games)) nrow(tables_nba$games) else 0L
+    nba_shots_rows <- if (!is.null(tables_nba$shots)) nrow(tables_nba$shots) else 0L
+    nba_pbp_rows <- if (!is.null(tables_nba$pbp)) nrow(tables_nba$pbp) else 0L
+
     log_info(
       "NBA Stats parse complete: games=",
-      if (!is.null(tables_nba$games)) nrow(tables_nba$games) else 0L,
+      nba_games_rows,
       " shots=",
-      if (!is.null(tables_nba$shots)) nrow(tables_nba$shots) else 0L,
+      nba_shots_rows,
       " pbp=",
-      if (!is.null(tables_nba$pbp)) nrow(tables_nba$pbp) else 0L
+      nba_pbp_rows
     )
+
+    existing_sql_shots <- get_sqlite_season_row_count(
+      db_path = db_path,
+      table_name = "nba_stats_shots",
+      season_values = list(season_label),
+      season_type_norm = season_type_norm
+    )
+    if (nba_games_rows > 0L && nba_shots_rows == 0L) {
+      stop(
+        paste0(
+          "NBA Stats parsed 0 shots for ", season_label, " (existing sqlite shots=", existing_sql_shots,
+          "). Refusing to replace nba_stats tables to avoid clobbering shot data. ",
+          "Likely temporary network issue to stats.nba.com; rerun when online."
+        ),
+        call. = FALSE
+      )
+    }
 
     nba_out_dir <- file.path(out_dir, "nba", "nba_stats", season_label)
     write_tables(

@@ -1,0 +1,687 @@
+renv 1.1.6 was loaded from project library, but this project is configured to use renv 1.1.6.
+- Use `renv::record("renv@1.1.6")` to record renv 1.1.6 in the lockfile.
+- Use `renv::restore(packages = "renv")` to install renv 1.1.6 into the project library.
+renv 1.1.6 was loaded from project library, but this project is configured to use renv 1.1.6.
+- Use `renv::record("renv@1.1.6")` to record renv 1.1.6 in the lockfile.
+- Use `renv::restore(packages = "renv")` to install renv 1.1.6 into the project library.
+  |                                                                              |                                                                      |   0%  |                                                                              |==================                                                    |  25%  |                                                                              |===================================                                   |  50%  |                                                                              |====================================================                  |  75%  |                                                                              |======================================================================| 100%
+Running analysis/expected_points_analysis.py...
+Rolling Window Training: ['2020-21', '2021-22', '2022-23', '2023-24', '2024-25']
+Target Season (Out-of-Sample): 2025-26
+============================================================
+
+Loading training data from 2020-21 to 2024-25...
+Loaded 1,063,152 training shots
+After cleaning: 1,063,152 training shots
+
+Loading target season 2025-26...
+Loaded 138,207 target shots
+After cleaning: 138,207 target shots
+
+Generating visualizations...
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/shot_chart_2025-26.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/shot_distance_analysis_2025-26.png
+
+Train (prior 5 seasons): 1,063,152 | Target (out-of-sample): 138,207
+
+Training Logistic Regression on rolling window data...
+
+============================================================
+MODEL RESULTS (Out-of-Sample Evaluation)
+Training: 2020-21 to 2024-25
+Evaluation: 2025-26
+============================================================
+Accuracy:     0.6272
+AUC-ROC:      0.6492
+Log Loss:     0.6463
+Brier Score:  0.2280
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.61      0.82      0.70     73413
+           1       0.67      0.41      0.51     64794
+
+    accuracy                           0.63    138207
+   macro avg       0.64      0.61      0.60    138207
+weighted avg       0.64      0.63      0.61    138207
+
+Saved metrics: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/model_metrics_xfg.csv
+Model saved to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/models/xp_model_2025-26.joblib
+
+Generating xP and POE for target season (out-of-sample)...
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/shots_with_xp_2025-26.parquet
+
+Top 5 shots with highest POE:
+   PLAYER_NAME                ACTION_TYPE  shot_distance_feet  xP_prob      POE
+ Miles Bridges           Pullup Jump shot                  64 0.018070 2.945789
+ Anthony Black                  Jump Shot                  63 0.018349 2.944953
+  Jamal Murray Driving Floating Jump Shot                  56 0.022070 2.933789
+  Jamal Murray           Pullup Jump shot                  55 0.026283 2.921151
+Daniss Jenkins           Pullup Jump shot                  52 0.029906 2.910282
+
+============================================================
+ANALYSIS COMPLETE
+Model trained on: 1,063,152 shots (2020-21 to 2024-25)
+Predictions on:   138,207 shots (2025-26) - TRUE OUT-OF-SAMPLE
+============================================================
+Running analysis/advanced_analytics.py...
+Loading enriched shot data...
+Loaded 138,207 shots
+
+============================================================
+PHASE 1: SHOT QUALITY (RESIDUAL ANALYSIS)
+============================================================
+
+TOP 15 OVERPERFORMERS (Positive Residuals):
+                 player  avg_xFG  actual_fg_pct  residual_fg_pct  attempts
+           Luke Kennard 0.414299       0.537500         0.123201       240
+           Nikola Jokić 0.471952       0.594249         0.122298       626
+             Luka Garza 0.490388       0.591549         0.101161       213
+Shai Gilgeous-Alexander 0.458880       0.553942         0.095062       964
+          Deandre Ayton 0.582817       0.675676         0.092859       407
+            Cam Spencer 0.396917       0.488550         0.091633       393
+            Sam Merrill 0.388560       0.475096         0.086536       261
+           Kevin Durant 0.432300       0.508855         0.076555       847
+          Austin Reaves 0.437265       0.511278         0.074013       399
+         T.J. McConnell 0.454647       0.528481         0.073834       316
+          DeMar DeRozan 0.436654       0.506401         0.069747       703
+          Stephen Curry 0.401172       0.467742         0.066570       744
+         Maxime Raynaud 0.487408       0.552553         0.065145       333
+          Naji Marshall 0.466300       0.531128         0.064828       514
+               AJ Green 0.376585       0.440771         0.064186       363
+
+BOTTOM 15 UNDERPERFORMERS (Negative Residuals):
+            player  avg_xFG  actual_fg_pct  residual_fg_pct  attempts
+    Ausar Thompson 0.572354       0.512755        -0.059599       392
+Vince Williams Jr. 0.420085       0.352273        -0.067813       264
+  Patrick Williams 0.445095       0.374593        -0.070502       307
+     Herbert Jones 0.466271       0.394636        -0.071635       261
+         Ryan Dunn 0.513200       0.441296        -0.071904       247
+    Andre Drummond 0.571514       0.497585        -0.073930       207
+      Nikola Jović 0.442057       0.367347        -0.074710       294
+        Danny Wolf 0.468828       0.391635        -0.077193       263
+        Sion James 0.457237       0.374486        -0.082752       243
+ Ronald Holland II 0.498130       0.413105        -0.085024       351
+    Mouhamed Gueye 0.523397       0.437788        -0.085609       217
+   Nae'Qwan Tomlin 0.570182       0.479821        -0.090362       223
+        Yves Missi 0.634252       0.531401        -0.102851       207
+       Micah Peavy 0.495431       0.381818        -0.113613       220
+   Bilal Coulibaly 0.516491       0.391304        -0.125187       253
+
+RESIDUALS BY ZONE:
+                 zone  avg_xFG  actual_fg_pct  avg_residual  attempts  residual_fg_pct
+    Above the Break 3 0.354333       0.350445     -0.003888     42486        -0.003888
+      Restricted Area 0.660865       0.668162      0.007298     38778         0.007298
+In The Paint (Non-RA) 0.437704       0.444713      0.007010     28099         0.007010
+            Mid-Range 0.416481       0.414475     -0.002006     14066        -0.002006
+        Left Corner 3 0.387845       0.382800     -0.005045      7628        -0.005045
+       Right Corner 3 0.388316       0.384205     -0.004110      7129        -0.004110
+            Backcourt 0.032361       0.476190      0.443829        21         0.443829
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/Luke_Kennard_residual_heatmap.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_residuals.csv
+
+============================================================
+PHASE 2: SHOT DIFFICULTY INDEX (SDI)
+============================================================
+
+TOP 15 PLAYERS BY SHOT DIFFICULTY:
+          player  avg_sdi  avg_xFG  actual_fg_pct  attempts
+        AJ Green 0.547759 0.376585       0.440771       363
+  Gary Trent Jr. 0.545962 0.387914       0.387755       343
+      Isaiah Joe 0.545189 0.392824       0.433775       302
+  Bub Carrington 0.541887 0.396851       0.399538       433
+   Klay Thompson 0.538707 0.390262       0.384615       494
+      Sam Hauser 0.534152 0.373331       0.408377       382
+   Miles McBride 0.532367 0.403092       0.433702       362
+      Keon Ellis 0.529367 0.413355       0.397196       214
+Collin Gillespie 0.528790 0.391406       0.442831       551
+     Sam Merrill 0.527476 0.388560       0.475096       261
+ Anfernee Simons 0.527152 0.396691       0.442539       583
+     Cam Spencer 0.526395 0.396917       0.488550       393
+      Vít Krejčí 0.525203 0.400713       0.461059       321
+   Jose Alvarado 0.524196 0.409961       0.417857       280
+        Tre Mann 0.524016 0.415733       0.362869       237
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/sdi_vs_xfg_scatter.png
+
+ELITE SHOT MAKERS (High SDI + Positive Residual):
+          player  avg_sdi  actual_fg_pct  avg_xFG
+        AJ Green 0.547759       0.440771 0.376585
+      Isaiah Joe 0.545189       0.433775 0.392824
+  Bub Carrington 0.541887       0.399538 0.396851
+      Sam Hauser 0.534152       0.408377 0.373331
+   Miles McBride 0.532367       0.433702 0.403092
+Collin Gillespie 0.528790       0.442831 0.391406
+     Sam Merrill 0.527476       0.475096 0.388560
+ Anfernee Simons 0.527152       0.442539 0.396691
+     Cam Spencer 0.526395       0.488550 0.396917
+      Vít Krejčí 0.525203       0.461059 0.400713
+
+============================================================
+PHASE 3: PLAYER SHOT ARCHETYPE CLUSTERING
+============================================================
+
+⚠️  DISCLAIMER: These archetypes describe shot location and
+   difficulty patterns ONLY. They do NOT imply offensive skill,
+   versatility, or overall player quality.
+
+Built features for 263 players
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/player_metric_correlations.png
+
+CLUSTER SUMMARY:
+    role                              archetype  avg_distance  avg_xFG  avg_sdi  actual_fg_pct  pullup_rate  pct_rim  pct_midrange  pct_3pt  pct_corner_3  distance_entropy  usage_pct  attempts_per_game  count
+0    Big                   Big – Paint-Dominant         6.931    0.541    0.343          0.543        0.391    0.799         0.099    0.102         0.031             1.318      0.224             10.741      8
+1    Big       Big – Paint-Dominant (Low Usage)         4.554    0.602    0.292          0.595        0.210    0.902         0.030    0.068         0.034             1.013      0.162              7.471     19
+2  Guard              Guard – Perimeter-Focused        18.921    0.407    0.513          0.421        0.833    0.263         0.126    0.611         0.102             1.395      0.203             10.628     23
+3  Guard  Guard – Perimeter-Focused (Low Usage)        19.692    0.408    0.503          0.432        0.838    0.227         0.048    0.724         0.213             1.268      0.151              7.704     18
+4   Wing            Wing – Mid-Range Specialist        15.426    0.435    0.487          0.449        0.763    0.398         0.188    0.413         0.102             1.542      0.223             11.401     27
+5   Wing             Wing – Role Player (Mixed)        13.703    0.468    0.440          0.463        0.643    0.491         0.090    0.418         0.117             1.481      0.208             11.233    168
+
+SAMPLE PLAYERS BY ARCHETYPE:
+  Wing – Mid-Range Specialist: Brandon Ingram, Jamal Murray, Kevin Durant, Dillon Brooks
+  Wing – Role Player (Mixed): Jaylen Brown, Tyrese Maxey, Donovan Mitchell, Jalen Brunson
+  Guard – Perimeter-Focused (Low Usage): Donte DiVincenzo, Duncan Robinson, Royce O'Neale
+  Big – Paint-Dominant: Amen Thompson, Jaime Jaquez Jr., Derik Queen
+  Guard – Perimeter-Focused: Derrick White, Stephen Curry, Payton Pritchard, Anfernee Simons
+  Big – Paint-Dominant (Low Usage): Dyson Daniels, Zion Williamson, Jalen Duren
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/player_archetypes_scatter.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/gmm_bic_by_role.csv
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gmm_bic_by_role.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_clusters.csv
+
+============================================================
+ANALYSIS COMPLETE
+============================================================
+Data saved to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data
+Figures saved to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures
+Running analysis/player_performance_analysis.py...
+Loading enriched shot data...
+Loaded 138,207 shots
+
+Computing player metrics...
+Found 224 players with 250+ attempts
+
+============================================================
+TOP 15 PLAYERS BY TOTAL POINTS OVER EXPECTED
+============================================================
+            PLAYER_NAME  total_attempts fg_pct total_poe poe_per_100
+Shai Gilgeous-Alexander             964  55.4%     190.3       19.75
+           Nikola Jokić             626  59.4%     164.0       26.20
+           Kevin Durant             847  50.9%     142.1       16.78
+           Jamal Murray             885  48.6%     129.7       14.66
+          Stephen Curry             744  46.8%     118.3       15.91
+            Luka Dončić             923  47.3%     114.3       12.39
+       Donovan Mitchell             994  48.4%     114.0       11.47
+           Kon Knueppel             683  48.5%      98.9       14.47
+            Cam Spencer             393  48.9%      96.4       24.53
+          DeMar DeRozan             703  50.6%      96.0       13.65
+        Anthony Edwards             891  49.4%      93.3       10.47
+          Kawhi Leonard             739  49.7%      88.7       12.01
+       Collin Gillespie             551  44.3%      84.5       15.34
+       Payton Pritchard             717  46.2%      82.8       11.55
+           Jaylen Brown            1060  48.5%      81.9        7.73
+
+============================================================
+BOTTOM 15 PLAYERS BY TOTAL POINTS OVER EXPECTED
+============================================================
+       PLAYER_NAME  total_attempts fg_pct total_poe poe_per_100
+     Amen Thompson             681  50.2%     -81.9      -12.02
+ Ronald Holland II             351  41.3%     -78.9      -22.49
+   Bilal Coulibaly             253  39.1%     -74.8      -29.55
+    Jeremiah Fears             626  42.8%     -73.1      -11.68
+      Noah Clowney             456  38.4%     -61.3      -13.45
+    Stephon Castle             506  45.5%     -59.7      -11.80
+      Nikola Jović             294  36.7%     -57.3      -19.49
+Karl-Anthony Towns             675  46.5%     -55.0       -8.15
+      VJ Edgecombe             620  42.7%     -52.1       -8.40
+   P.J. Washington             436  44.7%     -50.4      -11.56
+     Dyson Daniels             525  49.5%     -50.2       -9.57
+       Derik Queen             512  49.0%     -49.4       -9.65
+      Dylan Harper             379  45.4%     -49.2      -12.99
+    Ausar Thompson             392  51.3%     -47.7      -12.17
+        Danny Wolf             263  39.2%     -46.9      -17.84
+
+Generating shot chart for top performer: Shai Gilgeous-Alexander
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/Shai_Gilgeous-Alexander_poe_shotchart.png
+
+Player summary saved to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_summary.csv
+Running analysis/value_analysis.py...
+============================================================
+PLAYER VALUE ANALYSIS: POE + SALARY
+============================================================
+Loaded 224 players with performance data
+Loaded 467 players with salary data
+Matched 219 players with salary
+
+============================================================
+PLAYER VALUE ANALYSIS
+============================================================
+
+🏆 BEST VALUE (Highest POE per $1M):
+  Cam Spencer               +37.99 POE/$M  ($2.5M, +96 POE)
+  Collin Gillespie          +36.81 POE/$M  ($2.3M, +85 POE)
+  Maxime Raynaud            +31.58 POE/$M  ($1.3M, +40 POE)
+  AJ Green                  +29.64 POE/$M  ($2.3M, +68 POE)
+  Tim Hardaway Jr.          +26.09 POE/$M  ($2.3M, +60 POE)
+  Jaylon Tyson              +16.74 POE/$M  ($3.5M, +58 POE)
+  Sandro Mamukelashvili     +12.96 POE/$M  ($2.5M, +32 POE)
+  Payton Pritchard          +11.45 POE/$M  ($7.2M, +83 POE)
+  Keyonte George            +10.68 POE/$M  ($4.3M, +46 POE)
+  Kon Knueppel               +9.87 POE/$M  ($10.0M, +99 POE)
+
+💸 LOWEST VALUE (Low POE, High Salary):
+  Miles Bridges              -1.77 POE/$M  ($25.0M, -44 POE)
+  De'Andre Hunter            -1.32 POE/$M  ($23.3M, -31 POE)
+  Derrick White              -1.28 POE/$M  ($28.1M, -36 POE)
+  Bam Adebayo                -1.22 POE/$M  ($37.1M, -45 POE)
+  OG Anunoby                 -1.16 POE/$M  ($39.6M, -46 POE)
+  Ja Morant                  -1.12 POE/$M  ($39.4M, -44 POE)
+  Jordan Poole               -1.12 POE/$M  ($31.8M, -36 POE)
+  Karl-Anthony Towns         -1.04 POE/$M  ($53.1M, -55 POE)
+  Draymond Green             -1.03 POE/$M  ($25.9M, -27 POE)
+  Evan Mobley                -0.95 POE/$M  ($46.4M, -44 POE)
+
+💎 HIDDEN GEMS (High POE, Low Salary):
+  Kon Knueppel                 +99 POE  ($10.0M)
+  Cam Spencer                  +96 POE  ($2.5M)
+  Collin Gillespie             +85 POE  ($2.3M)
+  Payton Pritchard             +83 POE  ($7.2M)
+  Bobby Portis                 +75 POE  ($13.4M)
+
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_value_with_salary.csv
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/poe_vs_salary_scatter.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/fg_residual_vs_salary_scatter.png
+
+============================================================
+COMPLETE
+============================================================
+Running analysis/shot_density.py...
+rows: 138207 for 2025-26 regular
+FG%: 46.9%
+2PT FG%: 54.6%
+3PT FG%: 35.9%
+
+Top zones by attempts:
+      SHOT_ZONE_BASIC   fga   fgm   fg_pct
+    Above the Break 3 42486 14889 0.350445
+      Restricted Area 38778 25910 0.668162
+In The Paint (Non-RA) 28099 12496 0.444713
+            Mid-Range 14066  5830 0.414475
+        Left Corner 3  7628  2920 0.382800
+       Right Corner 3  7129  2739 0.384205
+
+Saved improved visualization to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/shot_density_hexbin_2025-26_dark.png
+rows: 138207 for 2025-26 regular
+FG%: 46.9%
+2PT FG%: 54.6%
+3PT FG%: 35.9%
+
+Top zones by attempts:
+      SHOT_ZONE_BASIC   fga   fgm   fg_pct
+    Above the Break 3 42486 14889 0.350445
+      Restricted Area 38778 25910 0.668162
+In The Paint (Non-RA) 28099 12496 0.444713
+            Mid-Range 14066  5830 0.414475
+        Left Corner 3  7628  2920 0.382800
+       Right Corner 3  7129  2739 0.384205
+
+Saved improved visualization to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/shot_density_hexbin_2025-26_light.png
+Running analysis/gam_analysis.py...
+============================================================
+GAM ANALYSIS (PyGAM) - ROLLING WINDOW
+============================================================
+Rolling Window Training: ['2020-21', '2021-22', '2022-23', '2023-24', '2024-25']
+Target Season: 2025-26
+============================================================
+
+Loading training data from 2020-21 to 2024-25...
+Loaded 1,063,152 training shots
+
+Loading target season 2025-26 for visualizations...
+Loading shots_with_xp_2025-26.parquet...
+Loaded 138,207 target shots
+
+Train (prior 5 seasons): 1,063,152 | Target (out-of-sample): 138,207
+Fitting LogisticGAM (this may take a minute)...
+
+============================================================
+EVALUATION (Out-of-Sample)
+Training: 2020-21 to 2024-25
+Evaluation: 2025-26
+============================================================
+Accuracy:     0.6272
+AUC-ROC:      0.6535
+Log Loss:     0.6435
+Brier Score:  0.2268
+
+========================================
+GENERATING VISUALIZATIONS
+========================================
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_distance.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_angle.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_clock.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_period.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_shot_types.png
+Generating Spatial Probability + Effect Plots...
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_spatial_probability.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_spatial_tensor.png
+
+Model saved to /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/models/gam_model_2025-26.pkl
+Saved metrics: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/model_metrics_gam.csv
+
+============================================================
+ANALYSIS COMPLETE
+Model trained on: 1,063,152 shots (2020-21 to 2024-25)
+Evaluated on:     138,207 shots (2025-26) - TRUE OUT-OF-SAMPLE
+============================================================
+renv 1.1.6 was loaded from project library, but this project is configured to use renv 1.1.6.
+- Use `renv::record("renv@1.1.6")` to record renv 1.1.6 in the lockfile.
+- Use `renv::restore(packages = "renv")` to install renv 1.1.6 into the project library.
+renv 1.1.6 was loaded from project library, but this project is configured to use renv 1.1.6.
+- Use `renv::record("renv@1.1.6")` to record renv 1.1.6 in the lockfile.
+- Use `renv::restore(packages = "renv")` to install renv 1.1.6 into the project library.
+  |                                                                              |                                                                      |   0%  |                                                                              |==================                                                    |  25%  |                                                                              |===================================                                   |  50%  |                                                                              |====================================================                  |  75%  |                                                                              |======================================================================| 100%
+Running analysis/expected_points_analysis.py...
+Rolling Window Training: ['2020-21', '2021-22', '2022-23', '2023-24', '2024-25']
+Target Season (Out-of-Sample): 2025-26
+============================================================
+
+Loading training data from 2020-21 to 2024-25...
+Loaded 1,063,152 training shots
+After cleaning: 1,063,152 training shots
+
+Loading target season 2025-26...
+Warning: No data found for seasons=['2025-26'], season_type=regular
+Loaded 0 target shots
+After cleaning: 0 target shots
+Warning: analysis/expected_points_analysis.py failed; continuing.
+Running analysis/advanced_analytics.py...
+Loading enriched shot data...
+Loaded 138,207 shots
+
+============================================================
+PHASE 1: SHOT QUALITY (RESIDUAL ANALYSIS)
+============================================================
+
+TOP 15 OVERPERFORMERS (Positive Residuals):
+                 player  avg_xFG  actual_fg_pct  residual_fg_pct  attempts
+           Luke Kennard 0.414299       0.537500         0.123201       240
+           Nikola Jokić 0.471952       0.594249         0.122298       626
+             Luka Garza 0.490388       0.591549         0.101161       213
+Shai Gilgeous-Alexander 0.458880       0.553942         0.095062       964
+          Deandre Ayton 0.582817       0.675676         0.092859       407
+            Cam Spencer 0.396917       0.488550         0.091633       393
+            Sam Merrill 0.388560       0.475096         0.086536       261
+           Kevin Durant 0.432300       0.508855         0.076555       847
+          Austin Reaves 0.437265       0.511278         0.074013       399
+         T.J. McConnell 0.454647       0.528481         0.073834       316
+          DeMar DeRozan 0.436654       0.506401         0.069747       703
+          Stephen Curry 0.401172       0.467742         0.066570       744
+         Maxime Raynaud 0.487408       0.552553         0.065145       333
+          Naji Marshall 0.466300       0.531128         0.064828       514
+               AJ Green 0.376585       0.440771         0.064186       363
+
+BOTTOM 15 UNDERPERFORMERS (Negative Residuals):
+            player  avg_xFG  actual_fg_pct  residual_fg_pct  attempts
+    Ausar Thompson 0.572354       0.512755        -0.059599       392
+Vince Williams Jr. 0.420085       0.352273        -0.067813       264
+  Patrick Williams 0.445095       0.374593        -0.070502       307
+     Herbert Jones 0.466271       0.394636        -0.071635       261
+         Ryan Dunn 0.513200       0.441296        -0.071904       247
+    Andre Drummond 0.571514       0.497585        -0.073930       207
+      Nikola Jović 0.442057       0.367347        -0.074710       294
+        Danny Wolf 0.468828       0.391635        -0.077193       263
+        Sion James 0.457237       0.374486        -0.082752       243
+ Ronald Holland II 0.498130       0.413105        -0.085024       351
+    Mouhamed Gueye 0.523397       0.437788        -0.085609       217
+   Nae'Qwan Tomlin 0.570182       0.479821        -0.090362       223
+        Yves Missi 0.634252       0.531401        -0.102851       207
+       Micah Peavy 0.495431       0.381818        -0.113613       220
+   Bilal Coulibaly 0.516491       0.391304        -0.125187       253
+
+RESIDUALS BY ZONE:
+                 zone  avg_xFG  actual_fg_pct  avg_residual  attempts  residual_fg_pct
+    Above the Break 3 0.354333       0.350445     -0.003888     42486        -0.003888
+      Restricted Area 0.660865       0.668162      0.007298     38778         0.007298
+In The Paint (Non-RA) 0.437704       0.444713      0.007010     28099         0.007010
+            Mid-Range 0.416481       0.414475     -0.002006     14066        -0.002006
+        Left Corner 3 0.387845       0.382800     -0.005045      7628        -0.005045
+       Right Corner 3 0.388316       0.384205     -0.004110      7129        -0.004110
+            Backcourt 0.032361       0.476190      0.443829        21         0.443829
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/Luke_Kennard_residual_heatmap.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_residuals.csv
+
+============================================================
+PHASE 2: SHOT DIFFICULTY INDEX (SDI)
+============================================================
+
+TOP 15 PLAYERS BY SHOT DIFFICULTY:
+          player  avg_sdi  avg_xFG  actual_fg_pct  attempts
+        AJ Green 0.547759 0.376585       0.440771       363
+  Gary Trent Jr. 0.545962 0.387914       0.387755       343
+      Isaiah Joe 0.545189 0.392824       0.433775       302
+  Bub Carrington 0.541887 0.396851       0.399538       433
+   Klay Thompson 0.538707 0.390262       0.384615       494
+      Sam Hauser 0.534152 0.373331       0.408377       382
+   Miles McBride 0.532367 0.403092       0.433702       362
+      Keon Ellis 0.529367 0.413355       0.397196       214
+Collin Gillespie 0.528790 0.391406       0.442831       551
+     Sam Merrill 0.527476 0.388560       0.475096       261
+ Anfernee Simons 0.527152 0.396691       0.442539       583
+     Cam Spencer 0.526395 0.396917       0.488550       393
+      Vít Krejčí 0.525203 0.400713       0.461059       321
+   Jose Alvarado 0.524196 0.409961       0.417857       280
+        Tre Mann 0.524016 0.415733       0.362869       237
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/sdi_vs_xfg_scatter.png
+
+ELITE SHOT MAKERS (High SDI + Positive Residual):
+          player  avg_sdi  actual_fg_pct  avg_xFG
+        AJ Green 0.547759       0.440771 0.376585
+      Isaiah Joe 0.545189       0.433775 0.392824
+  Bub Carrington 0.541887       0.399538 0.396851
+      Sam Hauser 0.534152       0.408377 0.373331
+   Miles McBride 0.532367       0.433702 0.403092
+Collin Gillespie 0.528790       0.442831 0.391406
+     Sam Merrill 0.527476       0.475096 0.388560
+ Anfernee Simons 0.527152       0.442539 0.396691
+     Cam Spencer 0.526395       0.488550 0.396917
+      Vít Krejčí 0.525203       0.461059 0.400713
+
+============================================================
+PHASE 3: PLAYER SHOT ARCHETYPE CLUSTERING
+============================================================
+
+⚠️  DISCLAIMER: These archetypes describe shot location and
+   difficulty patterns ONLY. They do NOT imply offensive skill,
+   versatility, or overall player quality.
+
+Built features for 263 players
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/player_metric_correlations.png
+
+CLUSTER SUMMARY:
+    role                              archetype  avg_distance  avg_xFG  avg_sdi  actual_fg_pct  pullup_rate  pct_rim  pct_midrange  pct_3pt  pct_corner_3  distance_entropy  usage_pct  attempts_per_game  count
+0    Big                   Big – Paint-Dominant         6.931    0.541    0.343          0.543        0.391    0.799         0.099    0.102         0.031             1.318      0.224             10.741      8
+1    Big       Big – Paint-Dominant (Low Usage)         4.554    0.602    0.292          0.595        0.210    0.902         0.030    0.068         0.034             1.013      0.162              7.471     19
+2  Guard              Guard – Perimeter-Focused        18.921    0.407    0.513          0.421        0.833    0.263         0.126    0.611         0.102             1.395      0.203             10.628     23
+3  Guard  Guard – Perimeter-Focused (Low Usage)        19.692    0.408    0.503          0.432        0.838    0.227         0.048    0.724         0.213             1.268      0.151              7.704     18
+4   Wing            Wing – Mid-Range Specialist        15.426    0.435    0.487          0.449        0.763    0.398         0.188    0.413         0.102             1.542      0.223             11.401     27
+5   Wing             Wing – Role Player (Mixed)        13.703    0.468    0.440          0.463        0.643    0.491         0.090    0.418         0.117             1.481      0.208             11.233    168
+
+SAMPLE PLAYERS BY ARCHETYPE:
+  Wing – Mid-Range Specialist: Brandon Ingram, Jamal Murray, Kevin Durant, Dillon Brooks
+  Wing – Role Player (Mixed): Jaylen Brown, Tyrese Maxey, Donovan Mitchell, Jalen Brunson
+  Guard – Perimeter-Focused (Low Usage): Donte DiVincenzo, Duncan Robinson, Royce O'Neale
+  Big – Paint-Dominant: Amen Thompson, Jaime Jaquez Jr., Derik Queen
+  Guard – Perimeter-Focused: Derrick White, Stephen Curry, Payton Pritchard, Anfernee Simons
+  Big – Paint-Dominant (Low Usage): Dyson Daniels, Zion Williamson, Jalen Duren
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/player_archetypes_scatter.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/gmm_bic_by_role.csv
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gmm_bic_by_role.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_clusters.csv
+
+============================================================
+ANALYSIS COMPLETE
+============================================================
+Data saved to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data
+Figures saved to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures
+Running analysis/player_performance_analysis.py...
+Loading enriched shot data...
+Loaded 138,207 shots
+
+Computing player metrics...
+Found 224 players with 250+ attempts
+
+============================================================
+TOP 15 PLAYERS BY TOTAL POINTS OVER EXPECTED
+============================================================
+            PLAYER_NAME  total_attempts fg_pct total_poe poe_per_100
+Shai Gilgeous-Alexander             964  55.4%     190.3       19.75
+           Nikola Jokić             626  59.4%     164.0       26.20
+           Kevin Durant             847  50.9%     142.1       16.78
+           Jamal Murray             885  48.6%     129.7       14.66
+          Stephen Curry             744  46.8%     118.3       15.91
+            Luka Dončić             923  47.3%     114.3       12.39
+       Donovan Mitchell             994  48.4%     114.0       11.47
+           Kon Knueppel             683  48.5%      98.9       14.47
+            Cam Spencer             393  48.9%      96.4       24.53
+          DeMar DeRozan             703  50.6%      96.0       13.65
+        Anthony Edwards             891  49.4%      93.3       10.47
+          Kawhi Leonard             739  49.7%      88.7       12.01
+       Collin Gillespie             551  44.3%      84.5       15.34
+       Payton Pritchard             717  46.2%      82.8       11.55
+           Jaylen Brown            1060  48.5%      81.9        7.73
+
+============================================================
+BOTTOM 15 PLAYERS BY TOTAL POINTS OVER EXPECTED
+============================================================
+       PLAYER_NAME  total_attempts fg_pct total_poe poe_per_100
+     Amen Thompson             681  50.2%     -81.9      -12.02
+ Ronald Holland II             351  41.3%     -78.9      -22.49
+   Bilal Coulibaly             253  39.1%     -74.8      -29.55
+    Jeremiah Fears             626  42.8%     -73.1      -11.68
+      Noah Clowney             456  38.4%     -61.3      -13.45
+    Stephon Castle             506  45.5%     -59.7      -11.80
+      Nikola Jović             294  36.7%     -57.3      -19.49
+Karl-Anthony Towns             675  46.5%     -55.0       -8.15
+      VJ Edgecombe             620  42.7%     -52.1       -8.40
+   P.J. Washington             436  44.7%     -50.4      -11.56
+     Dyson Daniels             525  49.5%     -50.2       -9.57
+       Derik Queen             512  49.0%     -49.4       -9.65
+      Dylan Harper             379  45.4%     -49.2      -12.99
+    Ausar Thompson             392  51.3%     -47.7      -12.17
+        Danny Wolf             263  39.2%     -46.9      -17.84
+
+Generating shot chart for top performer: Shai Gilgeous-Alexander
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/Shai_Gilgeous-Alexander_poe_shotchart.png
+
+Player summary saved to: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_summary.csv
+Running analysis/value_analysis.py...
+============================================================
+PLAYER VALUE ANALYSIS: POE + SALARY
+============================================================
+Loaded 224 players with performance data
+Loaded 467 players with salary data
+Matched 219 players with salary
+
+============================================================
+PLAYER VALUE ANALYSIS
+============================================================
+
+🏆 BEST VALUE (Highest POE per $1M):
+  Cam Spencer               +37.99 POE/$M  ($2.5M, +96 POE)
+  Collin Gillespie          +36.81 POE/$M  ($2.3M, +85 POE)
+  Maxime Raynaud            +31.58 POE/$M  ($1.3M, +40 POE)
+  AJ Green                  +29.64 POE/$M  ($2.3M, +68 POE)
+  Tim Hardaway Jr.          +26.09 POE/$M  ($2.3M, +60 POE)
+  Jaylon Tyson              +16.74 POE/$M  ($3.5M, +58 POE)
+  Sandro Mamukelashvili     +12.96 POE/$M  ($2.5M, +32 POE)
+  Payton Pritchard          +11.45 POE/$M  ($7.2M, +83 POE)
+  Keyonte George            +10.68 POE/$M  ($4.3M, +46 POE)
+  Kon Knueppel               +9.87 POE/$M  ($10.0M, +99 POE)
+
+💸 LOWEST VALUE (Low POE, High Salary):
+  Miles Bridges              -1.77 POE/$M  ($25.0M, -44 POE)
+  De'Andre Hunter            -1.32 POE/$M  ($23.3M, -31 POE)
+  Derrick White              -1.28 POE/$M  ($28.1M, -36 POE)
+  Bam Adebayo                -1.22 POE/$M  ($37.1M, -45 POE)
+  OG Anunoby                 -1.16 POE/$M  ($39.6M, -46 POE)
+  Ja Morant                  -1.12 POE/$M  ($39.4M, -44 POE)
+  Jordan Poole               -1.12 POE/$M  ($31.8M, -36 POE)
+  Karl-Anthony Towns         -1.04 POE/$M  ($53.1M, -55 POE)
+  Draymond Green             -1.03 POE/$M  ($25.9M, -27 POE)
+  Evan Mobley                -0.95 POE/$M  ($46.4M, -44 POE)
+
+💎 HIDDEN GEMS (High POE, Low Salary):
+  Kon Knueppel                 +99 POE  ($10.0M)
+  Cam Spencer                  +96 POE  ($2.5M)
+  Collin Gillespie             +85 POE  ($2.3M)
+  Payton Pritchard             +83 POE  ($7.2M)
+  Bobby Portis                 +75 POE  ($13.4M)
+
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/player_value_with_salary.csv
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/poe_vs_salary_scatter.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/fg_residual_vs_salary_scatter.png
+
+============================================================
+COMPLETE
+============================================================
+Running analysis/shot_density.py...
+no rows for season=2025-26 season_type=regular; available season_type=[]
+rows: 0 for 2025-26 regular
+FG%: 0%
+2PT FG%: 0%
+3PT FG%: 0%
+
+Top zones by attempts:
+Empty DataFrame
+Columns: [SHOT_ZONE_BASIC, fga, fgm, fg_pct]
+Index: []
+Warning: analysis/shot_density.py failed; continuing.
+Running analysis/gam_analysis.py...
+============================================================
+GAM ANALYSIS (PyGAM) - ROLLING WINDOW
+============================================================
+Rolling Window Training: ['2020-21', '2021-22', '2022-23', '2023-24', '2024-25']
+Target Season: 2025-26
+============================================================
+
+Loading training data from 2020-21 to 2024-25...
+Loaded 1,063,152 training shots
+
+Loading target season 2025-26 for visualizations...
+Loading shots_with_xp_2025-26.parquet...
+Loaded 138,207 target shots
+
+Train (prior 5 seasons): 1,063,152 | Target (out-of-sample): 138,207
+Fitting LogisticGAM (this may take a minute)...
+
+============================================================
+EVALUATION (Out-of-Sample)
+Training: 2020-21 to 2024-25
+Evaluation: 2025-26
+============================================================
+Accuracy:     0.6272
+AUC-ROC:      0.6535
+Log Loss:     0.6435
+Brier Score:  0.2268
+
+========================================
+GENERATING VISUALIZATIONS
+========================================
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_distance.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_angle.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_clock.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_period.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_effect_shot_types.png
+Generating Spatial Probability + Effect Plots...
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_spatial_probability.png
+Saved: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/figures/gam_spatial_tensor.png
+
+Model saved to /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/models/gam_model_2025-26.pkl
+Saved metrics: /Users/itzjuztmya/Kaleb/spatialSportsR/analysis/data/model_metrics_gam.csv
+
+============================================================
+ANALYSIS COMPLETE
+Model trained on: 1,063,152 shots (2020-21 to 2024-25)
+Evaluated on:     138,207 shots (2025-26) - TRUE OUT-OF-SAMPLE
+============================================================

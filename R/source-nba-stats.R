@@ -808,8 +808,22 @@ collect_nba_shotchart <- function(season,
   }
 
   if (is.null(combined)) {
+    # If refresh produced no payload (common during temporary network outages),
+    # keep an existing shotchart file instead of overwriting it with empty data.
+    if (file.exists(out_path)) {
+      message("NBA shot chart: empty refresh; keeping existing file for ", season, " ", season_type)
+      return(out_path)
+    }
     combined <- .nba_shotchart_empty_raw()
     message("NBA shot chart: empty combined result for ", season, " ", season_type)
+  }
+
+  rs <- .nba_stats_find_result_set(combined, "Shot_Chart_Detail")
+  row_count <- if (!is.null(rs) && !is.null(rs$rowSet)) length(rs$rowSet) else 0L
+  if (row_count == 0L && file.exists(out_path)) {
+    # Do not clobber a previously valid season file with an empty row set.
+    message("NBA shot chart: 0 rows returned; keeping existing file for ", season, " ", season_type)
+    return(out_path)
   }
 
   jsonlite::write_json(combined, out_path, auto_unbox = TRUE, pretty = TRUE, null = "null")
