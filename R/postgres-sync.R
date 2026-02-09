@@ -118,6 +118,18 @@
   invisible(NULL)
 }
 
+# ---- Internal: Get Postgres column types ----
+
+.pg_get_types <- function(pg_con, table_name) {
+  # Get actual Postgres column types
+  pg_cols <- DBI::dbGetQuery(pg_con, paste0(
+    "SELECT column_name, data_type FROM information_schema.columns ",
+    "WHERE table_name = ", DBI::dbQuoteLiteral(pg_con, table_name)
+  ))
+  if (nrow(pg_cols) == 0) return(character(0))
+  setNames(pg_cols$data_type, pg_cols$column_name)
+}
+
 # ---- Internal: Ensure Postgres table exists with correct schema ----
 
 .pg_ensure_table <- function(pg_con, table_name, col_info, conflict_keys,
@@ -150,6 +162,34 @@
   # Fix any existing column type mismatches before inserting data
   .pg_fix_column_types(pg_con, table_name, col_info, sample_df)
 
+  # Check for missing columns and ADD them if needed
+  existing_cols <- DBI::dbListFields(pg_con, table_name)
+  existing_lower <- tolower(existing_cols)
+
+  for (i in seq_len(nrow(col_info))) {
+    col_name <- col_info$name[i]
+    if (tolower(col_name) %in% existing_lower) next
+    pg_type <- if (!is.null(sample_df) && col_name %in% names(sample_df)) {
+      .r_class_to_pg(class(sample_df[[col_name]])[1])
+    } else {
+      .sqlite_type_to_pg(col_info$type[i])
+    }
+    add_sql <- paste0(
+      "ALTER TABLE ", DBI::dbQuoteIdentifier(pg_con, table_name),
+      " ADD COLUMN IF NOT EXISTS ",
+      DBI::dbQuoteIdentifier(pg_con, col_name), " ", pg_type
+    )
+    DBI::dbExecute(pg_con, add_sql, immediate = TRUE)
+  }
+
+  if (!("_synced_at" %in% existing_lower)) {
+    add_sql <- paste0(
+      "ALTER TABLE ", DBI::dbQuoteIdentifier(pg_con, table_name),
+      " ADD COLUMN _synced_at TIMESTAMPTZ DEFAULT now()"
+    )
+    DBI::dbExecute(pg_con, add_sql, immediate = TRUE)
+  }
+
   constraint_name <- paste0(table_name, "_upsert_key")
   key_cols <- paste(
     vapply(conflict_keys, function(k) DBI::dbQuoteIdentifier(pg_con, k), character(1)),
@@ -169,25 +209,6 @@
       " UNIQUE (", key_cols, ")"
     )
     DBI::dbExecute(pg_con, alter_sql, immediate = TRUE)
-  }
-
-  existing_cols <- DBI::dbListFields(pg_con, table_name)
-  existing_lower <- tolower(existing_cols)
-
-  for (i in seq_len(nrow(col_info))) {
-    col_name <- col_info$name[i]
-    if (tolower(col_name) %in% existing_lower) next
-    pg_type <- if (!is.null(sample_df) && col_name %in% names(sample_df)) {
-      .r_class_to_pg(class(sample_df[[col_name]])[1])
-    } else {
-      .sqlite_type_to_pg(col_info$type[i])
-    }
-    add_sql <- paste0(
-      "ALTER TABLE ", DBI::dbQuoteIdentifier(pg_con, table_name),
-      " ADD COLUMN IF NOT EXISTS ",
-      DBI::dbQuoteIdentifier(pg_con, col_name), " ", pg_type
-    )
-    DBI::dbExecute(pg_con, add_sql, immediate = TRUE)
   }
 
   invisible(TRUE)
@@ -375,6 +396,7 @@ sync_sqlite_to_postgres <- function(sqlite_path = NULL,
           .pg_ensure_table(pg_con, tbl_name, col_info, keys,
                             sample_df = sample_df)
 
+          pg_types <- .pg_get_types(pg_con, tbl_name)
           all_cols <- col_info$name
 
           where_parts <- character()
@@ -449,8 +471,17 @@ sync_sqlite_to_postgres <- function(sqlite_path = NULL,
               # Convert logical columns to integer. SQLite has no real
               # BOOLEAN type — R sometimes reads 0/1 integers as logical
               # from small samples, which creates type mismatches.
-
-
+              
+              # If target column is boolean but data is integer (0/1), convert to logical
+              # so RPostgres sends TRUE/FALSE instead of 1/0.
+              for (col in names(chunk_df)) {
+                if (col %in% names(pg_types)) {
+                  # Postgres type might be "boolean" or "USER-DEFINED" alias, usually "boolean"
+                  if (pg_types[[col]] == "boolean" && !is.logical(chunk_df[[col]])) {
+                     chunk_df[[col]] <- as.logical(chunk_df[[col]])
+                  }
+                }
+              }
               staging_name <- paste0("_staging_", tbl_name)
 
               DBI::dbWithTransaction(pg_con, {
