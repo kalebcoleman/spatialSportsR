@@ -4,6 +4,13 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+# Load .env if present (Postgres credentials, SYNC_POSTGRES, etc.)
+if [[ -f "$repo_root/.env" ]]; then
+  set -a
+  source "$repo_root/.env"
+  set +a
+fi
+
 Rscript scripts/update_season.R "$@"
 
 # Run analysis scripts to refresh figures/reports after data update.
@@ -52,5 +59,15 @@ PY
     run_py "analysis/gam_analysis.py"
   else
     echo "Skipping gam_analysis.py (pygam not installed)."
+  fi
+fi
+
+# Optionally sync SQLite → Postgres after data update.
+# Set SYNC_POSTGRES=1 to enable. Requires POSTGRES_HOST, POSTGRES_DB,
+# POSTGRES_USER, POSTGRES_PASSWORD environment variables.
+if [[ "${SYNC_POSTGRES:-0}" == "1" ]]; then
+  echo "Syncing SQLite → Postgres..."
+  if ! Rscript "$repo_root/scripts/sync_postgres.R" "$@"; then
+    echo "Warning: Postgres sync failed; continuing."
   fi
 fi

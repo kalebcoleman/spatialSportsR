@@ -25,6 +25,7 @@ Suggests:
     htmltools,
     DBI,
     RSQLite,
+    RPostgres,
     curl,
     httr2,
     httr,
