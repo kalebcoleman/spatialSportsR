@@ -20,7 +20,7 @@
     integer   = "BIGINT",
     numeric   = "DOUBLE PRECISION",
     character = "TEXT",
-    logical   = "BIGINT",
+    logical   = "BOOLEAN",
     Date      = "DATE",
     POSIXct   = "TIMESTAMPTZ",
     POSIXlt   = "TIMESTAMPTZ",
@@ -449,12 +449,7 @@ sync_sqlite_to_postgres <- function(sqlite_path = NULL,
               # Convert logical columns to integer. SQLite has no real
               # BOOLEAN type — R sometimes reads 0/1 integers as logical
               # from small samples, which creates type mismatches.
-              logical_cols <- vapply(chunk_df, is.logical, logical(1))
-              if (any(logical_cols)) {
-                for (lc in names(which(logical_cols))) {
-                  chunk_df[[lc]] <- as.integer(chunk_df[[lc]])
-                }
-              }
+
 
               staging_name <- paste0("_staging_", tbl_name)
 
