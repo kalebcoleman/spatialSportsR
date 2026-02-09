@@ -13,3 +13,6 @@
 ^renv\.lock$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.env\.example$
+^LICENSE\.md$
+^scripts$
