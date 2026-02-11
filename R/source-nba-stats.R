@@ -147,6 +147,7 @@ nba_stats_collect_game_index <- function(season,
     ),
     error = function(e) NULL
   )
+
   if (isTRUE(save_index)) {
     return(list(games = games, index_path = index_path, shotchart_path = shotchart_path))
   }
@@ -640,6 +641,19 @@ nba_stats_parse_raw_dir <- function(season, raw_dir, season_type = "Regular Seas
   }
 
   if (nrow(games) > 0 && nrow(team_box_traditional) > 0) {
+    # Fill missing home_team_id / away_team_id from boxscore homeAway field.
+    # The boxscore provides team_id + homeAway for each game.
+    if (all(c("game_id", "team_id", "homeAway") %in% names(team_box_traditional))) {
+      tb_home <- team_box_traditional[team_box_traditional$homeAway == "home", , drop = FALSE]
+      tb_away <- team_box_traditional[team_box_traditional$homeAway == "away", , drop = FALSE]
+      idx_h <- match(games$game_id, tb_home$game_id)
+      idx_a <- match(games$game_id, tb_away$game_id)
+      missing_h <- !is.na(idx_h) & (is.na(games$home_team_id) | !nzchar(as.character(games$home_team_id)))
+      missing_a <- !is.na(idx_a) & (is.na(games$away_team_id) | !nzchar(as.character(games$away_team_id)))
+      if (any(missing_h)) games$home_team_id[missing_h] <- as.character(tb_home$team_id[idx_h[missing_h]])
+      if (any(missing_a)) games$away_team_id[missing_a] <- as.character(tb_away$team_id[idx_a[missing_a]])
+    }
+
     score_col <- NULL
     if ("PTS" %in% names(team_box_traditional)) {
       score_col <- "PTS"

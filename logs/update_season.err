@@ -158,3 +158,385 @@ Traceback (most recent call last):
   File "/Users/itzjuztmya/Kaleb/spatialSportsR/.venv/lib/python3.14/site-packages/matplotlib/colors.py", line 2692, in inverse
     raise ValueError("Invalid vmin or vmax")
 ValueError: Invalid vmin or vmax
+[2026-02-09 08:56:14] Update season: 2025-26 (regular)
+[2026-02-09 08:56:14] Sources: espn, nba_stats
+[2026-02-09 08:56:14] DB: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed/nba.sqlite
+[2026-02-09 08:56:14] Raw dir: /Users/itzjuztmya/Kaleb/spatialSportsR/data/raw
+[2026-02-09 08:56:14] Parsed dir: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed
+[2026-02-09 08:56:14] ESPN update starting...
+[2026-02-09 08:56:14] ESPN max game_date is in the future (2026-04-13); clamping to today (2026-02-09).
+[2026-02-09 08:56:14] ESPN backfill window: 2026-02-06 to 2026-02-09
+[2026-02-09 08:56:27] ESPN collect complete: games=30 raw_files=30
+[2026-02-09 08:59:54] ESPN parse complete: games=1239 events=385920 teams=2486
+[2026-02-09 09:00:10] ESPN update complete.
+[2026-02-09 09:00:10] NBA Stats update starting...
+[2026-02-09 09:00:10] Refreshing NBA Stats index...
+[2026-02-09 09:03:05] NBA Stats index games: 785
+[2026-02-09 09:03:06] NBA Stats collect complete: games=785 raw_files=785
+[2026-02-09 09:03:06] Refreshing NBA Stats shotchart...
+[2026-02-09 09:04:27] NBA Stats parse complete: games=785 shots=140676 pbp=378405
+[2026-02-09 09:04:44] NBA Stats update complete.
+[2026-02-09 09:04:44] Update finished.
+Matplotlib is building the font cache; this may take a moment.
+[2026-02-09 09:07:02] SQLite → Postgres sync starting...
+[2026-02-09 09:07:02] SQLite path: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed/nba.sqlite
+[2026-02-09 09:07:02] Mode: incremental (season input=2026)
+[2026-02-09 09:07:04] Connected to Postgres: nbaapp-pg-20970.postgres.database.azure.com
+[2026-02-09 09:07:04] Season filter: 2025-26
+Syncing espn_games...
+NOTICE:  relation "espn_games" already exists, skipping
+
+  espn_games: 1239 rows to sync
+  espn_games: done (1239 rows, 3.2s)
+Syncing espn_events...
+NOTICE:  relation "espn_events" already exists, skipping
+
+  espn_events: 385920 rows to sync
+  espn_events: chunk 1/8 (50000/385920 rows)
+  espn_events: chunk 2/8 (100000/385920 rows)
+  espn_events: chunk 3/8 (150000/385920 rows)
+  espn_events: chunk 4/8 (200000/385920 rows)
+  espn_events: chunk 5/8 (250000/385920 rows)
+  espn_events: chunk 6/8 (300000/385920 rows)
+  espn_events: chunk 7/8 (350000/385920 rows)
+  espn_events: chunk 8/8 (385920/385920 rows)
+  espn_events: done (385920 rows, 83.5s)
+Syncing espn_manifest...
+NOTICE:  relation "espn_manifest" already exists, skipping
+
+  espn_manifest: 1243 rows to sync
+  espn_manifest: done (1239 rows, 3.4s)
+Syncing espn_player_box...
+NOTICE:  relation "espn_player_box" already exists, skipping
+
+  espn_player_box: 45350 rows to sync
+  espn_player_box: done (45350 rows, 7.3s)
+Syncing espn_team_box...
+NOTICE:  relation "espn_team_box" already exists, skipping
+
+  espn_team_box: 4334 rows to sync
+  espn_team_box: done (4326 rows, 3.5s)
+Syncing espn_teams...
+NOTICE:  relation "espn_teams" already exists, skipping
+
+  espn_teams: 4334 rows to sync
+  espn_teams: done (62 rows, 3s)
+Syncing nba_stats_games...
+NOTICE:  relation "nba_stats_games" already exists, skipping
+
+  nba_stats_games: 785 rows to sync
+  nba_stats_games: done (785 rows, 5s)
+Syncing nba_stats_manifest...
+NOTICE:  relation "nba_stats_manifest" already exists, skipping
+
+  nba_stats_manifest: 786 rows to sync
+  nba_stats_manifest: done (786 rows, 2.9s)
+Syncing nba_stats_pbp...
+NOTICE:  relation "nba_stats_pbp" already exists, skipping
+
+  nba_stats_pbp: 378405 rows to sync
+  nba_stats_pbp: chunk 1/8 (50000/378405 rows)
+  nba_stats_pbp: chunk 2/8 (100000/378405 rows)
+  nba_stats_pbp: chunk 3/8 (150000/378405 rows)
+  nba_stats_pbp: chunk 4/8 (200000/378405 rows)
+  nba_stats_pbp: chunk 5/8 (250000/378405 rows)
+  nba_stats_pbp: chunk 6/8 (300000/378405 rows)
+  nba_stats_pbp: chunk 7/8 (350000/378405 rows)
+  nba_stats_pbp: chunk 8/8 (378405/378405 rows)
+  nba_stats_pbp: done (378405 rows, 60.3s)
+Syncing nba_stats_shots...
+NOTICE:  relation "nba_stats_shots" already exists, skipping
+
+  nba_stats_shots: 140676 rows to sync
+  nba_stats_shots: chunk 1/3 (50000/140676 rows)
+  nba_stats_shots: chunk 2/3 (100000/140676 rows)
+  nba_stats_shots: chunk 3/3 (140676/140676 rows)
+  nba_stats_shots: done (140676 rows, 31.6s)
+Syncing nba_stats_player_box_traditional...
+NOTICE:  relation "nba_stats_player_box_traditional" already exists, skipping
+
+  nba_stats_player_box_traditional: 20434 rows to sync
+  nba_stats_player_box_traditional: done (20434 rows, 17.6s)
+Syncing nba_stats_player_box_advanced...
+NOTICE:  relation "nba_stats_player_box_advanced" already exists, skipping
+
+  nba_stats_player_box_advanced: 20405 rows to sync
+  nba_stats_player_box_advanced: done (20405 rows, 9.1s)
+Syncing nba_stats_player_box_fourfactors...
+NOTICE:  relation "nba_stats_player_box_fourfactors" already exists, skipping
+
+  nba_stats_player_box_fourfactors: 20408 rows to sync
+  nba_stats_player_box_fourfactors: done (20408 rows, 4.9s)
+Syncing nba_stats_player_box_usage...
+NOTICE:  relation "nba_stats_player_box_usage" already exists, skipping
+
+  nba_stats_player_box_usage: 20434 rows to sync
+  nba_stats_player_box_usage: done (20434 rows, 14.1s)
+Syncing nba_stats_team_box_traditional...
+NOTICE:  relation "nba_stats_team_box_traditional" already exists, skipping
+
+  nba_stats_team_box_traditional: 1569 rows to sync
+  nba_stats_team_box_traditional: done (1569 rows, 5s)
+Syncing nba_stats_team_box_advanced...
+NOTICE:  relation "nba_stats_team_box_advanced" already exists, skipping
+
+  nba_stats_team_box_advanced: 1567 rows to sync
+  nba_stats_team_box_advanced: done (1567 rows, 3.2s)
+Syncing nba_stats_team_box_fourfactors...
+NOTICE:  relation "nba_stats_team_box_fourfactors" already exists, skipping
+
+  nba_stats_team_box_fourfactors: 1567 rows to sync
+  nba_stats_team_box_fourfactors: done (1567 rows, 3s)
+Sync complete: 1045172 rows across 17 tables
+[2026-02-09 09:11:25] Sync finished in 260.7s: 1045172 rows across 17 tables
+[2026-02-10 04:01:32] Update season: 2025-26 (regular)
+[2026-02-10 04:01:32] Sources: espn, nba_stats
+[2026-02-10 04:01:32] DB: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed/nba.sqlite
+[2026-02-10 04:01:32] Raw dir: /Users/itzjuztmya/Kaleb/spatialSportsR/data/raw
+[2026-02-10 04:01:32] Parsed dir: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed
+[2026-02-10 04:01:32] ESPN update starting...
+[2026-02-10 04:01:32] ESPN max game_date is in the future (2026-04-13); clamping to today (2026-02-10).
+[2026-02-10 04:01:32] ESPN backfill window: 2026-02-07 to 2026-02-10
+Error in curl::curl_fetch_memory(url, handle = handle): Timeout was reached [site.api.espn.com]:
+Operation too slow. Less than 1 bytes/sec transferred the last 600 seconds
+Request failed [ERROR]. Retrying in 1.7 seconds...
+[2026-02-10 04:18:16] ESPN collect complete: games=28 raw_files=28
+[2026-02-10 07:47:37] ESPN parse complete: games=1239 events=390863 teams=2486
+[2026-02-10 07:48:01] ESPN update complete.
+[2026-02-10 07:48:01] NBA Stats update starting...
+[2026-02-10 07:48:01] Refreshing NBA Stats index...
+[2026-02-10 08:45:57] NBA Stats index games: 798
+[2026-02-10 09:01:02] NBA Stats collect complete: games=798 raw_files=798
+[2026-02-10 09:01:02] Refreshing NBA Stats shotchart...
+[2026-02-10 09:02:26] NBA Stats parse complete: games=798 shots=142427 pbp=385171
+[2026-02-10 09:02:45] NBA Stats update complete.
+[2026-02-10 09:02:45] Update finished.
+[2026-02-10 09:14:24] Update season: 2025-26 (regular)
+[2026-02-10 09:14:24] Sources: espn, nba_stats
+[2026-02-10 09:14:24] DB: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed/nba.sqlite
+[2026-02-10 09:14:24] Raw dir: /Users/itzjuztmya/Kaleb/spatialSportsR/data/raw
+[2026-02-10 09:14:24] Parsed dir: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed
+[2026-02-10 09:14:24] ESPN update starting...
+[2026-02-10 09:14:24] ESPN max game_date is in the future (2026-04-13); clamping to today (2026-02-10).
+[2026-02-10 09:14:24] ESPN backfill window: 2026-02-07 to 2026-02-10
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1.2 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 2.5 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 12.1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1.8 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1.5 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 6.4 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1.3 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1.5 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 7.4 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 2.7 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 2.8 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 5 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1.7 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1.1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 5.1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 4.5 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1.4 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 11.6 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 7.2 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.api.espn.com]:
+Could not resolve host: site.api.espn.com
+Request failed [ERROR]. Retrying in 5.7 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 1.7 seconds...
+Error in curl::curl_fetch_memory(url, handle = handle): Could not resolve hostname [site.web.api.espn.com]:
+Could not resolve host: site.web.api.espn.com
+Request failed [ERROR]. Retrying in 14.8 seconds...
+[2026-02-10 09:16:17] ESPN collect complete: games=0 raw_files=0
+[2026-02-10 09:19:48] ESPN parse complete: games=1239 events=390863 teams=2486
+[2026-02-10 09:20:07] ESPN update complete.
+Warning message:
+In src$collect_game_index(season, raw_dir = league_dir, force = force,  :
+  No games found for season 2026 (regular). Scoreboard errors: 4
+[2026-02-10 09:20:07] NBA Stats update starting...
+[2026-02-10 09:20:07] Refreshing NBA Stats index...
+[2026-02-10 09:21:43] NBA Stats index games: 798
+[2026-02-10 09:21:45] NBA Stats collect complete: games=798 raw_files=798
+[2026-02-10 09:21:45] Refreshing NBA Stats shotchart...
+[2026-02-10 09:23:34] NBA Stats parse complete: games=798 shots=142427 pbp=385171
+[2026-02-10 09:24:01] NBA Stats update complete.
+[2026-02-10 09:24:01] Update finished.
+[2026-02-10 09:26:55] SQLite → Postgres sync starting...
+[2026-02-10 09:26:55] SQLite path: /Users/itzjuztmya/Kaleb/spatialSportsR/data/parsed/nba.sqlite
+[2026-02-10 09:26:55] Mode: incremental (season input=2026)
+[2026-02-10 09:26:56] Connected to Postgres: nbaapp-pg-20970.postgres.database.azure.com
+[2026-02-10 09:26:56] Season filter: 2025-26
+Syncing espn_games...
+NOTICE:  relation "espn_games" already exists, skipping
+
+  espn_games: 1239 rows to sync
+  espn_games: done (1239 rows, 3.4s)
+Syncing espn_events...
+NOTICE:  relation "espn_events" already exists, skipping
+
+  espn_events: 390863 rows to sync
+  espn_events: chunk 1/8 (50000/390863 rows)
+  espn_events: chunk 2/8 (100000/390863 rows)
+  espn_events: chunk 3/8 (150000/390863 rows)
+  espn_events: chunk 4/8 (200000/390863 rows)
+  espn_events: chunk 5/8 (250000/390863 rows)
+  espn_events: chunk 6/8 (300000/390863 rows)
+  espn_events: chunk 7/8 (350000/390863 rows)
+  espn_events: chunk 8/8 (390863/390863 rows)
+  espn_events: done (390863 rows, 102.1s)
+Syncing espn_manifest...
+NOTICE:  relation "espn_manifest" already exists, skipping
+
+  espn_manifest: 1243 rows to sync
+  espn_manifest: done (1239 rows, 3s)
+Syncing espn_player_box...
+NOTICE:  relation "espn_player_box" already exists, skipping
+
+  espn_player_box: 45606 rows to sync
+  espn_player_box: done (45606 rows, 8.7s)
+Syncing espn_team_box...
+NOTICE:  relation "espn_team_box" already exists, skipping
+
+  espn_team_box: 4334 rows to sync
+  espn_team_box: done (4326 rows, 3.3s)
+Syncing espn_teams...
+NOTICE:  relation "espn_teams" already exists, skipping
+
+  espn_teams: 4334 rows to sync
+  espn_teams: done (62 rows, 2.7s)
+Syncing nba_stats_games...
+NOTICE:  relation "nba_stats_games" already exists, skipping
+
+  nba_stats_games: 798 rows to sync
+  nba_stats_games: done (798 rows, 3.4s)
+Syncing nba_stats_manifest...
+NOTICE:  relation "nba_stats_manifest" already exists, skipping
+
+  nba_stats_manifest: 799 rows to sync
+  nba_stats_manifest: done (799 rows, 3.2s)
+Syncing nba_stats_pbp...
+NOTICE:  relation "nba_stats_pbp" already exists, skipping
+
+  nba_stats_pbp: 385171 rows to sync
+  nba_stats_pbp: chunk 1/8 (50000/385171 rows)
+  nba_stats_pbp: chunk 2/8 (100000/385171 rows)
+  nba_stats_pbp: chunk 3/8 (150000/385171 rows)
+  nba_stats_pbp: chunk 4/8 (200000/385171 rows)
+  nba_stats_pbp: chunk 5/8 (250000/385171 rows)
+  nba_stats_pbp: chunk 6/8 (300000/385171 rows)
+  nba_stats_pbp: chunk 7/8 (350000/385171 rows)
+  nba_stats_pbp: chunk 8/8 (385171/385171 rows)
+  nba_stats_pbp: done (385171 rows, 65.2s)
+Syncing nba_stats_shots...
+NOTICE:  relation "nba_stats_shots" already exists, skipping
+
+  nba_stats_shots: 142427 rows to sync
+  nba_stats_shots: chunk 1/3 (50000/142427 rows)
+  nba_stats_shots: chunk 2/3 (100000/142427 rows)
+  nba_stats_shots: chunk 3/3 (142427/142427 rows)
+  nba_stats_shots: done (142427 rows, 31.8s)
+Syncing nba_stats_player_box_traditional...
+NOTICE:  relation "nba_stats_player_box_traditional" already exists, skipping
+
+  nba_stats_player_box_traditional: 20792 rows to sync
+  nba_stats_player_box_traditional: done (20792 rows, 19.1s)
+Syncing nba_stats_player_box_advanced...
+NOTICE:  relation "nba_stats_player_box_advanced" already exists, skipping
+
+  nba_stats_player_box_advanced: 20763 rows to sync
+  nba_stats_player_box_advanced: done (20763 rows, 14.2s)
+Syncing nba_stats_player_box_fourfactors...
+NOTICE:  relation "nba_stats_player_box_fourfactors" already exists, skipping
+
+  nba_stats_player_box_fourfactors: 20766 rows to sync
+  nba_stats_player_box_fourfactors: done (20766 rows, 4.3s)
+Syncing nba_stats_player_box_usage...
+NOTICE:  relation "nba_stats_player_box_usage" already exists, skipping
+
+  nba_stats_player_box_usage: 20792 rows to sync
+  nba_stats_player_box_usage: done (20792 rows, 5.5s)
+Syncing nba_stats_team_box_traditional...
+NOTICE:  relation "nba_stats_team_box_traditional" already exists, skipping
+
+  nba_stats_team_box_traditional: 1596 rows to sync
+  nba_stats_team_box_traditional: done (1596 rows, 2.9s)
+Syncing nba_stats_team_box_advanced...
+NOTICE:  relation "nba_stats_team_box_advanced" already exists, skipping
+
+  nba_stats_team_box_advanced: 1594 rows to sync
+  nba_stats_team_box_advanced: done (1594 rows, 3s)
+Syncing nba_stats_team_box_fourfactors...
+NOTICE:  relation "nba_stats_team_box_fourfactors" already exists, skipping
+
+  nba_stats_team_box_fourfactors: 1594 rows to sync
+  nba_stats_team_box_fourfactors: done (1594 rows, 2.8s)
+Sync complete: 1060427 rows across 17 tables
+[2026-02-10 09:31:35] Sync finished in 278.7s: 1060427 rows across 17 tables
